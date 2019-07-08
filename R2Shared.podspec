@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
 
   s.name         = "R2Shared"
-  s.version      = "1.2.7"
+  s.version      = "1.3.1"
   s.summary      = "R2 Shared"
   s.homepage     = "http://readium.github.io"
   s.license      = "BSD 3-Clause License"
@@ -11,7 +11,8 @@ Pod::Spec.new do |s|
   s.source       = { :git => "https://github.com/readium/r2-shared-swift.git", :branch => "develop" }
   s.source_files  = "r2-shared-swift/**/*.{m,h,swift}"
   s.exclude_files = ["**/Info*.plist"]
-  s.xcconfig            = { 'FRAMEWORK_SEARCH_PATHS' => '"$(PODS_ROOT)/R2Shared/**"' }
+  s.resources    = ['r2-shared-swift/Resources/**']
+  s.frameworks   = 'MobileCoreServices'
   s.swift_version  = "4.2"
 
 end
