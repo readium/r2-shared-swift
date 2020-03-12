@@ -207,7 +207,7 @@ public class Publication: JSONEquatable, Loggable {
     
     public enum Format: Equatable, Hashable {
         /// Formats natively supported by Readium.
-        case cbz, epub, pdf, webpub
+        case cbz, epub, pdf, webpub, audiobook
         /// Default value when the format is not specified.
         case unknown
         
@@ -231,8 +231,10 @@ public class Publication: JSONEquatable, Loggable {
                         return .cbz
                     case "application/pdf", "application/pdf+lcp":
                         return .pdf
-                    case "application/webpub+json", "application/audiobook+json":
+                    case "application/webpub+json":
                         return .webpub
+                    case "application/audiobook+zip", "application/audiobook+lcp", "application/audiobook+json":
+                        return .audiobook
                     default:
                         break
                     }
@@ -245,8 +247,10 @@ public class Publication: JSONEquatable, Loggable {
                     return .cbz
                 case "pdf", "lcpdf":
                     return .pdf
-                case "json":
+                case "json", "webpub":
                     return .webpub
+                case "audiobook", "audiobook-manifest", "lcpa":
+                    return .audiobook
                 default:
                     return .unknown
                 }
