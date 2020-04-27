@@ -60,6 +60,7 @@
 		CA6D426D240439F4002FBED4 /* OPDSCopiesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA6D426C240439F4002FBED4 /* OPDSCopiesTests.swift */; };
 		CA6D426F24043A44002FBED4 /* OPDSAvailability.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA6D426E24043A44002FBED4 /* OPDSAvailability.swift */; };
 		CA6D427124043AF1002FBED4 /* OPDSAvailabilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA6D427024043AF1002FBED4 /* OPDSAvailabilityTests.swift */; };
+		CA81741C24585E6700033776 /* NowPlayingInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA81741B24585E6700033776 /* NowPlayingInfo.swift */; };
 		CA86728E24485BE70035FDF4 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CA86728D24485BE70035FDF4 /* CoreServices.framework */; };
 		CA94291622BCD08C00305CDB /* ResourcesServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA94291522BCD08B00305CDB /* ResourcesServer.swift */; };
 		CA9A40D1221B0AA200531EA1 /* Either.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9A40D0221B0AA200531EA1 /* Either.swift */; };
@@ -67,6 +68,7 @@
 		CA9E6BA4223A657900ECF6E4 /* JSON.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9E6BA3223A657900ECF6E4 /* JSON.swift */; };
 		CA9E6BA9223A749900ECF6E4 /* Publication+EPUB.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9E6BA8223A749900ECF6E4 /* Publication+EPUB.swift */; };
 		CA9E6BAE223A76C600ECF6E4 /* Publication+OPDS.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9E6BAD223A76C600ECF6E4 /* Publication+OPDS.swift */; };
+		CAAF80CA2456D7370024D7AE /* AudioSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAAF80C92456D7370024D7AE /* AudioSession.swift */; };
 		CAB88C92224E766E00D36C99 /* LocatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAB88C91224E766E00D36C99 /* LocatorTests.swift */; };
 		CABBB2E52237ADEB004EB039 /* Feed.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3B1879F1FA33D4D00BB46BF /* Feed.swift */; };
 		CABBB2E62237ADEB004EB039 /* OpdsMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3B187A31FA33E1D00BB46BF /* OpdsMetadata.swift */; };
@@ -174,6 +176,7 @@
 		CA6D426C240439F4002FBED4 /* OPDSCopiesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OPDSCopiesTests.swift; sourceTree = "<group>"; };
 		CA6D426E24043A44002FBED4 /* OPDSAvailability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OPDSAvailability.swift; sourceTree = "<group>"; };
 		CA6D427024043AF1002FBED4 /* OPDSAvailabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OPDSAvailabilityTests.swift; sourceTree = "<group>"; };
+		CA81741B24585E6700033776 /* NowPlayingInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingInfo.swift; sourceTree = "<group>"; };
 		CA86728D24485BE70035FDF4 /* CoreServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreServices.framework; path = System/Library/Frameworks/CoreServices.framework; sourceTree = SDKROOT; };
 		CA94291522BCD08B00305CDB /* ResourcesServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResourcesServer.swift; sourceTree = "<group>"; };
 		CA9A40D0221B0AA200531EA1 /* Either.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Either.swift; sourceTree = "<group>"; };
@@ -182,6 +185,7 @@
 		CA9E6BA6223A67D300ECF6E4 /* Publication.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Publication.swift; sourceTree = "<group>"; };
 		CA9E6BA8223A749900ECF6E4 /* Publication+EPUB.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Publication+EPUB.swift"; sourceTree = "<group>"; };
 		CA9E6BAD223A76C600ECF6E4 /* Publication+OPDS.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Publication+OPDS.swift"; sourceTree = "<group>"; };
+		CAAF80C92456D7370024D7AE /* AudioSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSession.swift; sourceTree = "<group>"; };
 		CAB88C8F224E510000D36C99 /* MobileCoreServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MobileCoreServices.framework; path = System/Library/Frameworks/MobileCoreServices.framework; sourceTree = SDKROOT; };
 		CAB88C91224E766E00D36C99 /* LocatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocatorTests.swift; sourceTree = "<group>"; };
 		CABBB2F32237BF42004EB039 /* OPDSPriceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OPDSPriceTests.swift; sourceTree = "<group>"; };
@@ -234,6 +238,7 @@
 		57470F7F20ED0D25000CDCA3 /* Toolkit */ = {
 			isa = PBXGroup;
 			children = (
+				CA81741A24585E5800033776 /* Media */,
 				F3E7D4221F4ECB3D00DF166D /* Date+ISO8601.swift */,
 				CABEB3DB2215698600090B6C /* Deferred.swift */,
 				CA2006502225A1F300E6B3BD /* Observable.swift */,
@@ -430,6 +435,15 @@
 				CA16A86B2232EF3700E66255 /* Asserts.swift */,
 			);
 			path = "r2-shared-swiftTests";
+			sourceTree = "<group>";
+		};
+		CA81741A24585E5800033776 /* Media */ = {
+			isa = PBXGroup;
+			children = (
+				CAAF80C92456D7370024D7AE /* AudioSession.swift */,
+				CA81741B24585E6700033776 /* NowPlayingInfo.swift */,
+			);
+			path = Media;
 			sourceTree = "<group>";
 		};
 		CA9E6BAB223A766200ECF6E4 /* EPUB */ = {
@@ -689,6 +703,7 @@
 				CA16A8702232F7CD00E66255 /* Link.swift in Sources */,
 				F3E7D4191F4EC69100DF166D /* RootFile.swift in Sources */,
 				CA16A85B2232C4E600E66255 /* LocalizedString.swift in Sources */,
+				CA81741C24585E6700033776 /* NowPlayingInfo.swift in Sources */,
 				CA9E6BAE223A76C600ECF6E4 /* Publication+OPDS.swift in Sources */,
 				CABEB3DC2215698600090B6C /* Deferred.swift in Sources */,
 				CA3386EA24052D8B00FDCBBA /* DOMRange.swift in Sources */,
@@ -702,6 +717,7 @@
 				CA16A8722232FBBB00E66255 /* Properties.swift in Sources */,
 				CA176392223AAC1A00959FEB /* UserSettings.swift in Sources */,
 				CACD75F32236B0A5004F20CA /* PublicationCollection.swift in Sources */,
+				CAAF80CA2456D7370024D7AE /* AudioSession.swift in Sources */,
 				CA50B86E22B2A1CF003AFF24 /* R2LocalizedString.swift in Sources */,
 				CA6D42672404370C002FBED4 /* OPDSHolds.swift in Sources */,
 				CAF4EAE42237ABC700A17DA1 /* MediaOverlayNode.swift in Sources */,
