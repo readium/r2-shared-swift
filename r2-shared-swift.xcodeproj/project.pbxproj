@@ -139,6 +139,7 @@
 		CA9FC07624825A880020B9CC /* PublicationServicesBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9FC07524825A880020B9CC /* PublicationServicesBuilder.swift */; };
 		CA9FC0792482657F0020B9CC /* PublicationServicesBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9FC0782482657F0020B9CC /* PublicationServicesBuilderTests.swift */; };
 		CAAF80CA2456D7370024D7AE /* AudioSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAAF80C92456D7370024D7AE /* AudioSession.swift */; };
+		CAB009DC25B19811002E79E4 /* Weak.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAB009DB25B19811002E79E4 /* Weak.swift */; };
 		CAB88C92224E766E00D36C99 /* LocatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAB88C91224E766E00D36C99 /* LocatorTests.swift */; };
 		CABBB2E52237ADEB004EB039 /* Feed.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3B1879F1FA33D4D00BB46BF /* Feed.swift */; };
 		CABBB2E62237ADEB004EB039 /* OpdsMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3B187A31FA33E1D00BB46BF /* OpdsMetadata.swift */; };
@@ -343,6 +344,7 @@
 		CA9FC0782482657F0020B9CC /* PublicationServicesBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PublicationServicesBuilderTests.swift; sourceTree = "<group>"; };
 		CAAABA9F24D7F2DC004A4466 /* URLTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLTests.swift; sourceTree = "<group>"; };
 		CAAF80C92456D7370024D7AE /* AudioSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSession.swift; sourceTree = "<group>"; };
+		CAB009DB25B19811002E79E4 /* Weak.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Weak.swift; sourceTree = "<group>"; };
 		CAB88C91224E766E00D36C99 /* LocatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocatorTests.swift; sourceTree = "<group>"; };
 		CABBB2F32237BF42004EB039 /* OPDSPriceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OPDSPriceTests.swift; sourceTree = "<group>"; };
 		CABBB2F52237BF61004EB039 /* OPDSPrice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OPDSPrice.swift; sourceTree = "<group>"; };
@@ -484,6 +486,7 @@
 				CA038E4F25222B0900489729 /* ControlFlow.swift */,
 				CA7B1AA4248A2CFF00152F73 /* URITemplate.swift */,
 				CA7116F02455FAF900C029FD /* UTI.swift */,
+				CAB009DB25B19811002E79E4 /* Weak.swift */,
 				3ED94B721E98E44B73A50CCB /* Media Type */,
 			);
 			path = Toolkit;
@@ -1227,6 +1230,7 @@
 				CABEB3DC2215698600090B6C /* Deferred.swift in Sources */,
 				CA6F27702469D9050065B405 /* ArchiveFetcher.swift in Sources */,
 				CA3386EA24052D8B00FDCBBA /* DOMRange.swift in Sources */,
+				CAB009DC25B19811002E79E4 /* Weak.swift in Sources */,
 				CA2006512225A1F300E6B3BD /* Observable.swift in Sources */,
 				CA62B37C24E02F7C0046CDCF /* TransformingResource.swift in Sources */,
 				CA038E5025222B0900489729 /* ControlFlow.swift in Sources */,
