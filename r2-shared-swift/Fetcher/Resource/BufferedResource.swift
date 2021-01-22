@@ -45,52 +45,61 @@ public final class BufferedResource: ProxyResource {
             return .success(Data())
         }
 
+        // Round up the range to be read to the next `bufferSize`, because we will buffer the excess.
         let readUpperBound = min(requestedRange.upperBound.ceilMultiple(of: bufferSize), length)
         var readRange: Range<UInt64> = requestedRange.lowerBound..<readUpperBound
 
+        // Attempt to serve parts or all of the request using the buffer.
         if let buffer = buffer {
             // Everything already buffered?
             if buffer.range.contains(requestedRange) {
-                let lower = (requestedRange.lowerBound - buffer.range.lowerBound)
-                let upper = lower + (requestedRange.upperBound - requestedRange.lowerBound)
-                assert(lower >= 0)
-                assert(upper <= buffer.data.count)
-                return .success(buffer.data[lower..<upper])
+                let data = extractRange(requestedRange, in: buffer.data, startingAt: buffer.range.lowerBound)
+                return .success(data)
 
             // Beginning of requested data is buffered?
             } else if buffer.range.contains(requestedRange.lowerBound) {
                 var data = buffer.data
+                let bufferStart = buffer.range.lowerBound
                 readRange = buffer.range.upperBound..<readRange.upperBound
 
                 return super.read(range: readRange).map { readData in
                     data += readData
+                    // Shift the current buffer to the tail of the read data.
+                    saveBuffer(from: data, range: readRange)
 
-                    // Keep the last chunk of read data as the buffer for next reads.
-                    let lastChunk = data.suffix(Int(bufferSize))
-                    self.buffer = (
-                        data: Data(lastChunk),
-                        range: (readRange.upperBound - UInt64(lastChunk.count))..<readRange.upperBound
-                    )
-
-                    let lower = (requestedRange.lowerBound - buffer.range.lowerBound)
-                    let upper = lower + (requestedRange.upperBound - requestedRange.lowerBound)
-                    assert(lower >= 0)
-                    assert(upper <= data.count)
-                    return data[lower..<upper]
+                    return extractRange(requestedRange, in: data, startingAt: bufferStart)
                 }
             }
         }
 
+        // Fallback on reading the requested range from the original resource.
         return super.read(range: readRange).map { data in
-            // Keep the last chunk of read data as the buffer for next reads.
-            let lastChunk = data.suffix(Int(bufferSize))
-            buffer = (
-                data: Data(lastChunk),
-                range: (readRange.upperBound - UInt64(lastChunk.count))..<readRange.upperBound
-            )
-
+            saveBuffer(from: data, range: readRange)
             return data[0..<requestedRange.count]
         }
+    }
+
+    /// Keeps the last chunk of the given `data` as the buffer for next reads.
+    ///
+    /// - Parameters:
+    ///   - data: Data read from the original resource.
+    ///   - range: Range of the read data in the resource.
+    private func saveBuffer(from data: Data, range: Range<UInt64>) {
+        let lastChunk = Data(data.suffix(Int(bufferSize)))
+        buffer = (
+            data: lastChunk,
+            range: (range.upperBound - UInt64(lastChunk.count))..<range.upperBound
+        )
+    }
+
+    /// Reads a sub-range of the given `data` after shifting the given absolute (to the resource) ranges to be relative
+    /// to `data`.
+    private func extractRange(_ requestedRange: Range<UInt64>, in data: Data, startingAt dataStartOffset: UInt64) -> Data {
+        let lower = (requestedRange.lowerBound - dataStartOffset)
+        let upper = lower + (requestedRange.upperBound - requestedRange.lowerBound)
+        assert(lower >= 0)
+        assert(upper <= data.count)
+        return data[lower..<upper]
     }
 
 }
