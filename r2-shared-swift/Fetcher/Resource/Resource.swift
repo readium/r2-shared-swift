@@ -147,6 +147,11 @@ public enum ResourceError: LocalizedError {
     /// Used when the source can't be reached, e.g. no Internet connection, or an issue with the
     /// file system. Usually this is a temporary error.
     case unavailable
+
+    /// The request was cancelled.
+    ///
+    /// For example, an HTTP request was cancelled by the caller.
+    case cancelled
     
     /// For any other error, such as HTTP 500.
     case other(Error)
@@ -162,6 +167,8 @@ public enum ResourceError: LocalizedError {
             return 403
         case .unavailable:
             return 503
+        case .cancelled:
+            return 499  // nginx's Client Closed Request
         case .other:
             return 500
         }
@@ -182,6 +189,8 @@ public enum ResourceError: LocalizedError {
             return R2SharedLocalizedString("Publication.ResourceError.forbidden")
         case .unavailable:
             return R2SharedLocalizedString("Publication.ResourceError.unavailable")
+        case .cancelled:
+            return R2SharedLocalizedString("Publication.ResourceError.cancelled")
         case .other:
             return R2SharedLocalizedString("Publication.ResourceError.other")
         }

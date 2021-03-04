@@ -13,14 +13,19 @@ import Foundation
 import CommonCrypto
 
 extension URL: Loggable {
-    
+
+    /// Indicates whether this URL is an HTTP or HTTPS URL.
+    public var isHTTP: Bool {
+        ["http", "https"].contains(scheme?.lowercased())
+    }
+
     /// Returns whether the given `url` is `self` or one of its descendants.
     public func isParentOf(_ url: URL) -> Bool {
         let standardizedSelf = standardizedFileURL.path
         let other = url.standardizedFileURL.path
         return standardizedSelf == other || other.hasPrefix(standardizedSelf + "/")
     }
-    
+
     /// Computes the MD5 hash of the file, if the URL is a file URL.
     /// Source: https://stackoverflow.com/a/42935601/1474476
     public func md5() -> String? {

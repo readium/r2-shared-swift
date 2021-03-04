@@ -24,4 +24,5 @@
 "R2Shared.Publication.ResourceError.notFound" = "Resource not found";
 "R2Shared.Publication.ResourceError.forbidden" = "You are not allowed to access the resource";
 "R2Shared.Publication.ResourceError.unavailable" = "The resource is currently unavailable, please try again later";
+"R2Shared.Publication.ResourceError.cancelled" = "The request was cancelled";
 "R2Shared.Publication.ResourceError.other" = "A service error occurred";

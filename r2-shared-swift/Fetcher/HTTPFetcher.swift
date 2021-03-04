@@ -1,20 +1,15 @@
 //
-//  HTTPFetcher.swift
-//  r2-shared-swift
-//
-//  Created by Mickaël Menu on 01/06/2020.
-//
-//  Copyright 2020 Readium Foundation. All rights reserved.
-//  Use of this source code is governed by a BSD-style license which is detailed
-//  in the LICENSE file present in the project repository where this source code is maintained.
+//  Copyright 2021 Readium Foundation. All rights reserved.
+//  Use of this source code is governed by the BSD-style license
+//  available in the top-level LICENSE file of the project.
 //
 
 import Foundation
 
 /// Fetches remote resources with HTTP.
-public final class HTTPFetcher: Fetcher {
+public final class HTTPFetcher: Fetcher, Loggable {
     
-    enum Error: Swift.Error {
+    enum HTTPError: Error {
         case invalidURL(String)
         case serverFailure
     }
@@ -26,8 +21,12 @@ public final class HTTPFetcher: Fetcher {
     public let links: [Link] = []
     
     public func get(_ link: Link) -> Resource {
-        guard let url = url(for: link.href) else {
-            return FailureResource(link: link, error: .other(Error.invalidURL(link.href)))
+        guard
+            let url = link.url(relativeTo: baseURL),
+            url.isHTTP
+        else {
+            log(.error, "Not a valid HTTP URL: \(link.href)")
+            return FailureResource(link: link, error: .badRequest(HTTPError.invalidURL(link.href)))
         }
         return HTTPResource(link: link, url: url)
     }
@@ -36,49 +35,18 @@ public final class HTTPFetcher: Fetcher {
 
     /// Base URL from which relative HREF are served.
     private let baseURL: URL?
-    
-    private func url(for href: String) -> URL? {
-        // HREF relative to the baseURL.
-        if href.hasPrefix("/"), let baseURL = baseURL {
-            return baseURL.appendingPathComponent(href)
-        }
-        
-        // Absolute URL.
-        if
-            let url = URL(string: href),
-            let scheme = url.scheme?.lowercased(),
-            ["http", "https"].contains(scheme)
-        {
-            return url
-        }
-        
-        return nil
-    }
-    
-    final class HTTPResource: Resource {
+
+    /// HTTPResource provides access to an external URL.
+    final class HTTPResource: NSObject, Resource, Loggable, URLSessionDataDelegate {
 
         let link: Link
-        
-        let file: URL? = nil
-        
-        private let url: URL
-        
-        private var cachedHeadResponse: HTTPURLResponse?
-        
-        private var headResponse: ResourceResult<HTTPURLResponse> {
-            if let response = cachedHeadResponse {
-                return .success(response)
-            }
-            
-            var request = URLRequest(url: url)
-            request.httpMethod = "HEAD"
-            return URLSession.shared.synchronousDataTask(with: request)
-                .map { [unowned self] data, response in
-                    self.cachedHeadResponse = response
-                    return response
-                }
+        let url: URL
+
+        init(link: Link, url: URL) {
+            self.link = link
+            self.url = url
         }
-        
+
         var length: ResourceResult<UInt64> {
             headResponse.flatMap {
                 let length = $0.expectedContentLength
@@ -90,39 +58,148 @@ public final class HTTPFetcher: Fetcher {
             }
         }
 
-        init(link: Link, url: URL) {
-            self.link = link
-            self.url = url
+        /// Cached HEAD response to get the expected content length and other metadata.
+        private lazy var headResponse: ResourceResult<HTTPURLResponse> = {
+            var request = URLRequest(url: url)
+            request.httpMethod = "HEAD"
+            return URLSession.shared.synchronousDataTask(with: request)
+                .map { data, response in response }
+        }()
+
+        /// An HTTP resource is always remote.
+        var file: URL? { nil }
+
+        func read(range: Range<UInt64>?, consume: @escaping (Data) -> (), completion: @escaping (ResourceResult<()>) -> ()) -> Cancellable {
+            var request = URLRequest(url: url)
+            if let range = range {
+                request.setBytesRange(range)
+            }
+
+            let task = Task(
+                task: urlSession.dataTask(with: request),
+                consume: consume,
+                completion: completion
+            )
+            tasks.append(task)
+            task.start()
+
+            return task
         }
-        
-        func read(range: Range<UInt64>?) -> ResourceResult<Data> {
-            // FIXME:
-            return .failure(.unavailable)
-//            if let range = range {
-//                return headResponse.flatMap { response in
-//                    var request = URLRequest(url: url)
-//                    if response.acceptsRanges {
-//                        request.setBytesRange(range)
-//                    }
-//                    return URLSession.shared.synchronousDataTask(with: request)
-//                        .map { data, _ in data }
-//                }
-//
-//            } else {
-//                let request = URLRequest(url: url)
-//                return URLSession.shared.synchronousDataTask(with: request)
-//                    .map { data, _ in data }
-//            }
+
+        func close() {
+            tasks.forEach { $0.cancel() }
+            tasks.removeAll()
         }
-        
-        func close() { }
-        
+
+        // MARK: – Task Management
+
+        private lazy var urlSession =
+            URLSession(configuration: .default, delegate: self, delegateQueue: nil)
+
+        /// Represents an on-going HTTP fetch task.
+        private final class Task: Cancellable {
+            let task: URLSessionDataTask
+            /// Will be called with every chunk of data received.
+            let consume: (Data) -> Void
+            private var isFinished = false
+            private let completion: (ResourceResult<Void>) -> Void
+
+            init(task: URLSessionDataTask, consume: @escaping (Data) -> Void, completion: @escaping (ResourceResult<Void>) -> Void) {
+                self.task = task
+                self.consume = consume
+                self.completion = completion
+            }
+
+            func start() {
+                task.resume()
+            }
+
+            func cancel() {
+                task.cancel()
+                finish(with: .failure(.cancelled))
+            }
+
+            func finish(with result: ResourceResult<Void>) {
+                guard !isFinished else {
+                    return
+                }
+                isFinished = true
+                completion(result)
+            }
+        }
+
+        // On-going tasks.
+        private var tasks: [Task] = []
+
+        private func finishTask(_ task: URLSessionTask, withError error: ResourceError?) {
+            guard let index = tasks.firstIndex(where: { $0.task == task}) else {
+                return
+            }
+
+            let task = tasks.remove(at: index)
+            if let error = error {
+                task.finish(with: .failure(error))
+            } else {
+                task.finish(with: .success(()))
+            }
+        }
+
+        // MARK: - URLSessionDataDelegate
+
+        // FIXME: Disable caching?
+//        func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, willCacheResponse proposedResponse: CachedURLResponse, completionHandler: @escaping (CachedURLResponse?) -> ()) {
+//        }
+
+        func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> ()) {
+            if let error = response.resourceError {
+                finishTask(dataTask, withError: error)
+                completionHandler(.cancel)
+            } else {
+                completionHandler(.allow)
+            }
+        }
+
+        func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+            guard let task = tasks.first(where: { $0.task == dataTask }) else {
+                return
+            }
+
+            task.consume(data)
+        }
+
+        func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+            finishTask(task, withError: error.map { .other($0) })
+        }
+    }
+
+}
+
+private extension URLResponse {
+
+    var resourceError: ResourceError? {
+        guard let response = self as? HTTPURLResponse else {
+            return .other(HTTPFetcher.HTTPError.serverFailure)
+        }
+
+        // FIXME: 3xx
+        switch response.statusCode {
+        case 200..<300:
+            return nil
+        case 401, 403:
+            return .forbidden
+        case 404:
+            return .notFound
+        case 503:
+            return .unavailable
+        default:
+            return .other(HTTPFetcher.HTTPError.serverFailure)
+        }
     }
 
 }
 
 private extension URLSession {
-    
+
     func synchronousDataTask(with request: URLRequest) -> ResourceResult<(Data, HTTPURLResponse)> {
         var data: Data?
         var response: URLResponse?
@@ -138,26 +215,15 @@ private extension URLSession {
         dataTask.resume()
 
         _ = semaphore.wait(timeout: .distantFuture)
-        
-        if let response = response as? HTTPURLResponse {
-            if let data = data, response.statusCode == 200 {
-                return .success((data, response))
-            } else {
-                return .failure({
-                    switch response.statusCode {
-                    case 403:
-                        return .forbidden
-                    case 404:
-                        return .notFound
-                    case 503:
-                        return .unavailable
-                    default:
-                        return .other(HTTPFetcher.Error.serverFailure)
-                    }
-                }())
-            }
+
+        guard error == nil, let httpResponse = response as? HTTPURLResponse else {
+            return .failure(.other(error ?? HTTPFetcher.HTTPError.serverFailure))
+        }
+
+        if let error = httpResponse.resourceError {
+            return .failure(error)
         } else {
-            return .failure(.other(error ?? HTTPFetcher.Error.serverFailure))
+            return .success((data ?? Data(), httpResponse))
         }
     }
     
