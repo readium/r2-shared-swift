@@ -7,9 +7,9 @@
 import Foundation
 
 /// Represents an error occurring during an `HTTPClient` activity.
-public struct HTTPError: LocalizedError, Equatable, Loggable {
+public struct HTTPError: LocalizedError, Loggable {
 
-    public enum Kind: Equatable {
+    public enum Kind {
         /// The provided request was not valid.
         case malformedRequest
         /// The received response couldn't be decoded.
@@ -31,9 +31,15 @@ public struct HTTPError: LocalizedError, Equatable, Loggable {
         case serverError
         /// The device is offline.
         case offline
+        /// The request was cancelled.
+        case cancelled
+        /// An error whose kind is not recognized.
+        case other
 
-        public init(statusCode: Int) {
+        public init?(statusCode: Int) {
             switch statusCode {
+            case 200..<400:
+                return nil
             case 400:
                 self = .badRequest
             case 401:
@@ -42,8 +48,10 @@ public struct HTTPError: LocalizedError, Equatable, Loggable {
                 self = .forbidden
             case 404:
                 self = .notFound
-            case 405...499:
+            case 405...498:
                 self = .clientError
+            case 499:
+                self = .cancelled
             case 500...599:
                 self = .serverError
             default:
@@ -55,6 +63,9 @@ public struct HTTPError: LocalizedError, Equatable, Loggable {
     /// Category of HTTP error.
     public let kind: Kind
 
+    /// Underlying error, if any.
+    public let cause: Error?
+
     /// Response media type.
     public let mediaType: MediaType?
 
@@ -64,15 +75,21 @@ public struct HTTPError: LocalizedError, Equatable, Loggable {
     /// Response body parsed as a JSON problem details.
     public let problemDetails: HTTPProblemDetails?
 
-    public init(kind: Kind) {
+    public init(kind: Kind, cause: Error? = nil) {
         self.kind = kind
+        self.cause = cause
         self.mediaType = nil
         self.body = nil
         self.problemDetails = nil
     }
 
-    public init(statusCode: Int, mediaType: MediaType? = nil, body: Data? = nil) {
-        self.kind = Kind(statusCode: statusCode)
+    public init?(statusCode: Int, mediaType: MediaType? = nil, body: Data? = nil) {
+        guard let kind = Kind(statusCode: statusCode) else {
+            return nil
+        }
+
+        self.kind = kind
+        self.cause = nil
         self.mediaType = mediaType
         self.body = body
 
@@ -86,6 +103,38 @@ public struct HTTPError: LocalizedError, Equatable, Loggable {
             }
             return nil
         }()
+    }
+
+    /// Creates an `HTTPError` from a native `URLError`.
+    public init(error: Error) {
+        self.init(
+            kind: {
+                if let error = error as? URLError {
+                    switch error.code {
+                    case .badURL, .unsupportedURL:
+                        return .badRequest
+                    case .httpTooManyRedirects, .redirectToNonExistentLocation, .badServerResponse, .secureConnectionFailed:
+                        return .serverError
+                    case .zeroByteResource, .cannotDecodeContentData, .cannotDecodeRawData, .dataLengthExceedsMaximum:
+                        return .malformedResponse
+                    case .notConnectedToInternet, .networkConnectionLost:
+                        return .offline
+                    case .timedOut:
+                        return .timeout
+                    case .userAuthenticationRequired, .appTransportSecurityRequiresSecureConnection, .noPermissionsToReadFile:
+                        return .forbidden
+                    case .fileDoesNotExist:
+                        return .notFound
+                    case .cancelled, .userCancelledAuthentication:
+                        return .cancelled
+                    default:
+                        break
+                    }
+                }
+                return .other
+            }(),
+            cause: error
+        )
     }
 
     public var errorDescription: String? {
@@ -112,8 +161,12 @@ public struct HTTPError: LocalizedError, Equatable, Loggable {
             return R2SharedLocalizedString("HTTPError.clientError")
         case .serverError:
             return R2SharedLocalizedString("HTTPError.serverError")
+        case .cancelled:
+            return R2SharedLocalizedString("HTTPError.cancelled")
         case .offline:
             return R2SharedLocalizedString("HTTPError.offline")
+        case .other:
+            return (cause as? LocalizedError)?.errorDescription
         }
     }
 

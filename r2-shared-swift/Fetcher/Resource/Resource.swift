@@ -60,7 +60,7 @@ public extension Resource {
     /// Default implementation of `read(range:)` using the asynchronous `read(range:consume:completion:)` provided by
     /// implementing types.
     func read(range: Range<UInt64>?) -> ResourceResult<Data> {
-        var result: ResourceResult<Data> = .failure(.unavailable)
+        var result: ResourceResult<Data>!
         let semaphore = DispatchSemaphore(value: 0)
         _ = read(range: range) {
             result = $0
@@ -146,7 +146,7 @@ public enum ResourceError: LocalizedError {
     ///
     /// Used when the source can't be reached, e.g. no Internet connection, or an issue with the
     /// file system. Usually this is a temporary error.
-    case unavailable
+    case unavailable(Error?)
 
     /// The request was cancelled.
     ///

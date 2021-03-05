@@ -142,7 +142,6 @@
 		CA9EA46525F13823004E5F93 /* HTTPProblemDetails.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9EA46425F13823004E5F93 /* HTTPProblemDetails.swift */; };
 		CA9EA46825F1383E004E5F93 /* URLRequestConvertible.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9EA46725F1383E004E5F93 /* URLRequestConvertible.swift */; };
 		CA9EA46D25F138DF004E5F93 /* DefaultHTTPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9EA46C25F138DF004E5F93 /* DefaultHTTPClient.swift */; };
-		CA9EA47025F138F8004E5F93 /* DefaultHTTPClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9EA46F25F138F8004E5F93 /* DefaultHTTPClientTests.swift */; };
 		CA9EA47425F13906004E5F93 /* HTTPProblemDetailsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9EA47325F13906004E5F93 /* HTTPProblemDetailsTests.swift */; };
 		CA9FC06F24824C3B0020B9CC /* Manifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9FC06E24824C3B0020B9CC /* Manifest.swift */; };
 		CA9FC071248252970020B9CC /* ManifestTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9FC070248252970020B9CC /* ManifestTests.swift */; };
@@ -357,7 +356,6 @@
 		CA9EA46425F13823004E5F93 /* HTTPProblemDetails.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPProblemDetails.swift; sourceTree = "<group>"; };
 		CA9EA46725F1383E004E5F93 /* URLRequestConvertible.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLRequestConvertible.swift; sourceTree = "<group>"; };
 		CA9EA46C25F138DF004E5F93 /* DefaultHTTPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultHTTPClient.swift; sourceTree = "<group>"; };
-		CA9EA46F25F138F8004E5F93 /* DefaultHTTPClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultHTTPClientTests.swift; sourceTree = "<group>"; };
 		CA9EA47325F13906004E5F93 /* HTTPProblemDetailsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPProblemDetailsTests.swift; sourceTree = "<group>"; };
 		CA9FC06E24824C3B0020B9CC /* Manifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manifest.swift; sourceTree = "<group>"; };
 		CA9FC070248252970020B9CC /* ManifestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManifestTests.swift; sourceTree = "<group>"; };
@@ -900,7 +898,6 @@
 		CA9EA46A25F1385A004E5F93 /* HTTP */ = {
 			isa = PBXGroup;
 			children = (
-				CA9EA46F25F138F8004E5F93 /* DefaultHTTPClientTests.swift */,
 				CA9EA47325F13906004E5F93 /* HTTPProblemDetailsTests.swift */,
 			);
 			path = HTTP;
@@ -1214,7 +1211,6 @@
 				CA16A8622232D5F200E66255 /* ContributorTests.swift in Sources */,
 				CA6D42692404381B002FBED4 /* OPDSHoldsTests.swift in Sources */,
 				CA3386E62404FD4600FDCBBA /* Properties+EncryptionTests.swift in Sources */,
-				CA9EA47025F138F8004E5F93 /* DefaultHTTPClientTests.swift in Sources */,
 				CAB88C92224E766E00D36C99 /* LocatorTests.swift in Sources */,
 				CACD75E0223657AD004F20CA /* PublicationTests.swift in Sources */,
 				CA2B6B4124BF7A1E007AF537 /* HREFTests.swift in Sources */,

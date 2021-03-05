@@ -83,7 +83,7 @@ public final class ArchiveFetcher: Fetcher, Loggable {
             if let data = data {
                 return .success(data)
             } else {
-                return .failure(.unavailable)
+                return .failure(.unavailable(nil))
             }
         }
         
