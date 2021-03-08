@@ -37,7 +37,7 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
 
     public func fetch(_ request: URLRequestConvertible, completion: @escaping (HTTPResult<HTTPResponse>) -> Void) -> Cancellable {
         let urlRequest = request.urlRequest
-        log(.info, "Fetch (\(urlRequest.httpMethod ?? "GET")) \(request)")
+        log(.info, "Fetch (\(urlRequest.httpMethod ?? "GET")) \(request), headers: \(urlRequest.allHTTPHeaderFields ?? [:])")
 
         let task = FetchTask(
             task: session.dataTask(with: urlRequest),
@@ -186,36 +186,48 @@ private final class FetchTask: Task, Loggable {
     }
 
     func urlSession(_ session: URLSession, didCompleteWithError error: Error?) {
-        if let error: HTTPError = {
-            if let error = error {
-                return HTTPError(error: error)
-            } else if let response = response {
-                return HTTPError(statusCode: response.statusCode)
-            } else {
-                return HTTPError(kind: .malformedResponse)
-            }
-        }() {
-            finish(with: .failure(error))
-        } else {
-            finish(with: .success(()))
+        didCompleteWith(session: session, response: response, data: body, error: error, canRetry: true)
+    }
+
+    private func didCompleteWith(session: URLSession, response: URLResponse?, data: Data?, error: Error?, canRetry: Bool) {
+        if let error = error {
+            return finish(with: .failure(HTTPError(error: error)))
         }
+        guard let response = response as? HTTPURLResponse else {
+            return finish(with: .failure(HTTPError(kind: .malformedResponse)))
+        }
+
+        guard let body = data, response.statusCode < 400 else {
+            if canRetry, var request = task.originalRequest, request.httpMethod?.uppercased() == "HEAD" {
+                // It was a HEAD request, so we need to query the resource again to get the error body.
+                request.httpMethod = "GET"
+                session.dataTask(with: request) { data, response, error in
+                    self.didCompleteWith(session: session, response: response, data: data, error: error, canRetry: false)
+                }.resume()
+
+            } else {
+                finish(with: .failure(
+                    HTTPError(statusCode: response.statusCode, mediaType: response.sniffMediaType { data ?? Data() }, body: data)
+                        ?? HTTPError(kind: .malformedResponse)
+                ))
+            }
+            return
+        }
+
+        return finish(with: .success(FetchResponse(response: response, body: body)))
     }
 
     private var isFinished = false
 
-    private func finish(with result: HTTPResult<Void>) {
+    private func finish(with result: HTTPResult<FetchResponse>) {
         guard !isFinished else {
             return
         }
         isFinished = true
 
         switch result {
-        case .success:
-            if let response = response {
-                completion(.success(FetchResponse(response: response, body: body)))
-            } else {
-                completion(.failure(HTTPError(kind: .malformedResponse)))
-            }
+        case .success(let response):
+            completion(.success(response))
         case .failure(let error):
             if error.kind != .cancelled {
                 log(.error, "Fetch failed for: \(task.originalRequest?.url?.absoluteString ?? "N/A") with error: \(error.localizedDescription)")

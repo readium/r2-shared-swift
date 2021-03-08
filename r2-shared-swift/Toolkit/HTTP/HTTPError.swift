@@ -7,9 +7,9 @@
 import Foundation
 
 /// Represents an error occurring during an `HTTPClient` activity.
-public struct HTTPError: LocalizedError, Loggable {
+public struct HTTPError: LocalizedError, Equatable, Loggable {
 
-    public enum Kind {
+    public enum Kind: Equatable {
         /// The provided request was not valid.
         case malformedRequest
         /// The received response couldn't be decoded.
@@ -105,8 +105,13 @@ public struct HTTPError: LocalizedError, Loggable {
         }()
     }
 
-    /// Creates an `HTTPError` from a native `URLError`.
+    /// Creates an `HTTPError` from a native `URLError` or another error.
     public init(error: Error) {
+        if let error = error as? HTTPError {
+            self = error
+            return
+        }
+
         self.init(
             kind: {
                 if let error = error as? URLError {
@@ -168,6 +173,13 @@ public struct HTTPError: LocalizedError, Loggable {
         case .other:
             return (cause as? LocalizedError)?.errorDescription
         }
+    }
+
+    public static func ==(lhs: HTTPError, rhs: HTTPError) -> Bool {
+        return lhs.kind == rhs.kind
+            && lhs.mediaType == rhs.mediaType
+            && lhs.body == rhs.body
+            && lhs.problemDetails == rhs.problemDetails
     }
 
 }
