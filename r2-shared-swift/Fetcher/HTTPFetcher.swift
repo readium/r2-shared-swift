@@ -69,6 +69,7 @@ public final class HTTPFetcher: Fetcher, Loggable {
             request.httpMethod = "HEAD"
 
             return client.synchronousFetch(request)
+                .map { $0.response }
                 .mapError { ResourceError(httpError: $0) }
         }()
 
@@ -78,9 +79,10 @@ public final class HTTPFetcher: Fetcher, Loggable {
         func read(range: Range<UInt64>?, consume: @escaping (Data) -> (), completion: @escaping (ResourceResult<()>) -> ()) -> Cancellable {
             client.progressiveDownload(url,
                 range: range,
-                consume: { data, _ in consume(data) },
+                receiveResponse: nil,
+                consumeData: { data, _ in consume(data) },
                 completion: { result in
-                    completion(result.mapError { ResourceError(httpError: $0) })
+                    completion(result.map { _ in }.mapError { ResourceError(httpError: $0) })
                 }
             )
         }

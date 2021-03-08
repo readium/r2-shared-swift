@@ -35,7 +35,7 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
         session.invalidateAndCancel()
     }
 
-    public func fetch(_ request: URLRequestConvertible, completion: @escaping (HTTPResult<HTTPResponse>) -> Void) -> Cancellable {
+    public func fetch(_ request: URLRequestConvertible, completion: @escaping (HTTPResult<HTTPFetchResponse>) -> ()) -> Cancellable {
         let urlRequest = request.urlRequest
         log(.info, "Fetch (\(urlRequest.httpMethod ?? "GET")) \(request), headers: \(urlRequest.allHTTPHeaderFields ?? [:])")
 
@@ -47,16 +47,18 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
         return start(task)
     }
 
-    public func progressiveDownload(_ request: URLRequestConvertible, range: Range<UInt64>?, consume: @escaping (Data, Double?) -> Void, completion: @escaping (HTTPResult<Void>) -> Void) -> Cancellable {
-        log(.info, "Download (progressive) \(request), range: \(range.map { $0.description } ?? "all")")
+    public func progressiveDownload(_ request: URLRequestConvertible, range: Range<UInt64>?, receiveResponse: ((HTTPResponse) -> Void)?, consumeData: @escaping (Data, Double?) -> Void, completion: @escaping (HTTPResult<HTTPResponse>) -> Void) -> Cancellable {
         var request = request.urlRequest
         if let range = range {
             request.setBytesRange(range)
         }
 
+        log(.info, "Download (progressive) \(request), headers: \(request.allHTTPHeaderFields ?? [:])")
+
         let task = ProgressiveDownloadTask(
             task: session.dataTask(with: request),
-            consume: consume,
+            receiveResponse: receiveResponse,
+            consumeData: consumeData,
             completion: completion
         )
 
@@ -136,33 +138,14 @@ private extension Task {
 /// Represents an on-going fetch HTTP task.
 private final class FetchTask: Task, Loggable {
 
-    private struct FetchResponse: HTTPResponse {
-        let headers: [String: String]
-        let mediaType: MediaType
-        let body: Data
-
-        init(response: HTTPURLResponse, body: Data) {
-            var headers: [String: String] = [:]
-            for (k, v) in response.allHeaderFields {
-                if let ks = k as? String, let vs = v as? String {
-                    headers[ks] = vs
-                }
-            }
-
-            self.headers = headers
-            self.mediaType = response.sniffMediaType { body } ?? .binary
-            self.body = body
-        }
-    }
-
     let task: URLSessionTask
-    private let completion: (HTTPResult<HTTPResponse>) -> Void
+    private let completion: (HTTPResult<HTTPFetchResponse>) -> Void
 
     private var response: HTTPURLResponse? = nil
     /// Body data accumulator.
     private var body = Data()
 
-    init(task: URLSessionDataTask, completion: @escaping (HTTPResult<HTTPResponse>) -> Void) {
+    init(task: URLSessionDataTask, completion: @escaping (HTTPResult<HTTPFetchResponse>) -> Void) {
         self.task = task
         self.completion = completion
     }
@@ -214,12 +197,12 @@ private final class FetchTask: Task, Loggable {
             return
         }
 
-        return finish(with: .success(FetchResponse(response: response, body: body)))
+        return finish(with: .success((response: HTTPResponse(response: response, body: body), body: body)))
     }
 
     private var isFinished = false
 
-    private func finish(with result: HTTPResult<FetchResponse>) {
+    private func finish(with result: HTTPResult<HTTPFetchResponse>) {
         guard !isFinished else {
             return
         }
@@ -252,17 +235,19 @@ private final class ProgressiveDownloadTask: Task, Loggable {
     }
 
     let task: URLSessionTask
-    private let consume: (Data, Double?) -> Void
-    private let completion: (HTTPResult<Void>) -> Void
+    private let receiveResponse: ((HTTPResponse) -> Void)?
+    private let consumeData: (Data, Double?) -> Void
+    private let completion: (HTTPResult<HTTPResponse>) -> Void
 
     private var response: HTTPURLResponse? = nil
     // FIXME: Use task.progress.fractionCompleted once we bump minimum iOS version to 11+
     private var readBytes: Int64 = 0
     private var expectedBytes: Int64? = nil
 
-    init(task: URLSessionDataTask, consume: @escaping (Data, Double?) -> Void, completion: @escaping (HTTPResult<Void>) -> Void) {
+    init(task: URLSessionDataTask, receiveResponse: ((HTTPResponse) -> Void)?, consumeData: @escaping (Data, Double?) -> Void, completion: @escaping (HTTPResult<HTTPResponse>) -> Void) {
         self.task = task
-        self.consume = consume
+        self.receiveResponse = receiveResponse
+        self.consumeData = consumeData
         self.completion = completion
     }
 
@@ -277,23 +262,28 @@ private final class ProgressiveDownloadTask: Task, Loggable {
             return
         }
 
-        guard response.acceptsByteRanges else {
-            let url = task.originalRequest?.url?.absoluteString ?? "N/A"
-            log(.debug, url)
-            for (k, v) in response.allHeaderFields {
-                log(.debug, "\(k) - \(v)")
-            }
-            log(.error, "Progressive download requires the remote HTTP server to support byte range requests: \(url)")
-            finish(with: .failure(HTTPError(kind: .other, cause: ProgressiveDownloadError.byteRangesNotSupported(url: url))))
-
-            completionHandler(.cancel)
-            return
-        }
-
         self.response = response
-        self.expectedBytes = (response.allHeaderFields["Content-Length"] as? String)
-            .flatMap { Int64($0) }
-            .takeIf { $0 > 0 }
+
+        if response.statusCode < 400 {
+            guard response.acceptsByteRanges else {
+                let url = task.originalRequest?.url?.absoluteString ?? "N/A"
+                log(.debug, url)
+                for (k, v) in response.allHeaderFields {
+                    log(.debug, "\(k) - \(v)")
+                }
+                log(.error, "Progressive download requires the remote HTTP server to support byte range requests: \(url)")
+                finish(with: .failure(HTTPError(kind: .other, cause: ProgressiveDownloadError.byteRangesNotSupported(url: url))))
+
+                completionHandler(.cancel)
+                return
+            }
+
+            self.expectedBytes = (response.allHeaderFields["Content-Length"] as? String)
+                .flatMap { Int64($0) }
+                .takeIf { $0 > 0 }
+
+            self.receiveResponse?(HTTPResponse(response: response))
+        }
 
         completionHandler(.allow)
     }
@@ -309,7 +299,7 @@ private final class ProgressiveDownloadTask: Task, Loggable {
             progress = Double(min(readBytes, expectedBytes)) / Double(expectedBytes)
         }
 
-        consume(data, progress)
+        consumeData(data, progress)
     }
 
     func urlSession(_ session: URLSession, didCompleteWithError error: Error?) {
@@ -335,11 +325,16 @@ private final class ProgressiveDownloadTask: Task, Loggable {
             return
         }
         isFinished = true
-        completion(result)
 
         if case .failure(let error) = result, error.kind != .cancelled {
             log(.error, "Download (progressive) failed for: \(task.originalRequest?.url?.absoluteString ?? "N/A") with error: \(error.localizedDescription)")
         }
+
+        guard let response = response else {
+            completion(.failure(HTTPError(kind: .malformedResponse)))
+            return
+        }
+        completion(result.map { HTTPResponse(response: response) })
     }
 
 }
