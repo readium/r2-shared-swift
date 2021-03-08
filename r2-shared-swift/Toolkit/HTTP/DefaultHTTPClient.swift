@@ -9,7 +9,7 @@ import Foundation
 /// An implementation of `HTTPClient` using native APIs.
 public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSessionDataDelegate {
 
-    /// Creates a `DefaultHTTPClient` with common configuration.
+    /// Creates a `DefaultHTTPClient` with common configuration settings.
     ///
     /// - Parameters:
     ///   - cachePolicy: Determines the request caching policy used by HTTP tasks.
@@ -57,6 +57,7 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
 
         let task = ProgressiveDownloadTask(
             task: session.dataTask(with: request),
+            isByteRangeRequest: range != nil,
             receiveResponse: receiveResponse,
             consumeData: consumeData,
             completion: completion
@@ -182,7 +183,8 @@ private final class FetchTask: Task, Loggable {
 
         guard let body = data, response.statusCode < 400 else {
             if canRetry, var request = task.originalRequest, request.httpMethod?.uppercased() == "HEAD" {
-                // It was a HEAD request, so we need to query the resource again to get the error body.
+                // It was a HEAD request, we need to query the resource again to get the error body.
+                /// The body is needed for example when the response is an OPDS Authentication Document.
                 request.httpMethod = "GET"
                 session.dataTask(with: request) { data, response, error in
                     self.didCompleteWith(session: session, response: response, data: data, error: error, canRetry: false)
@@ -234,25 +236,37 @@ private final class ProgressiveDownloadTask: Task, Loggable {
         }
     }
 
+    /// States the progressive download task can be in.
+    private enum State {
+        /// Waiting for the HTTP response.
+        case loading
+        /// We received a success response, the data will be sent to `consumeData` progressively.
+        case download(HTTPResponse, readBytes: Int64)
+        /// We received an error response, the data will be accumulated in `body` to make the final `HTTPError`.
+        /// The body is needed for example when the response is an OPDS Authentication Document.
+        case error(HTTPError, body: Data)
+        /// This task is finished.
+        case finished
+    }
+
+    private var state: State = .loading
+
     let task: URLSessionTask
+    private let isByteRangeRequest: Bool
     private let receiveResponse: ((HTTPResponse) -> Void)?
     private let consumeData: (Data, Double?) -> Void
     private let completion: (HTTPResult<HTTPResponse>) -> Void
 
-    private var response: HTTPURLResponse? = nil
-    // FIXME: Use task.progress.fractionCompleted once we bump minimum iOS version to 11+
-    private var readBytes: Int64 = 0
-    private var expectedBytes: Int64? = nil
-
-    init(task: URLSessionDataTask, receiveResponse: ((HTTPResponse) -> Void)?, consumeData: @escaping (Data, Double?) -> Void, completion: @escaping (HTTPResult<HTTPResponse>) -> Void) {
+    init(task: URLSessionDataTask, isByteRangeRequest: Bool, receiveResponse: ((HTTPResponse) -> Void)?, consumeData: @escaping (Data, Double?) -> Void, completion: @escaping (HTTPResult<HTTPResponse>) -> Void) {
         self.task = task
+        self.isByteRangeRequest = isByteRangeRequest
         self.receiveResponse = receiveResponse
         self.consumeData = consumeData
         self.completion = completion
     }
 
     func urlSession(_ session: URLSession, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> ()) {
-        guard !isFinished else {
+        if case .finished = state {
             completionHandler(.cancel)
             return
         }
@@ -262,79 +276,85 @@ private final class ProgressiveDownloadTask: Task, Loggable {
             return
         }
 
-        self.response = response
+        if let error = HTTPError(statusCode: response.statusCode, mediaType: response.sniffMediaType()) {
+            state = .error(error, body: Data())
 
-        if response.statusCode < 400 {
-            guard response.acceptsByteRanges else {
+        } else {
+            guard !isByteRangeRequest || response.acceptsByteRanges else {
                 let url = task.originalRequest?.url?.absoluteString ?? "N/A"
                 log(.debug, url)
                 for (k, v) in response.allHeaderFields {
                     log(.debug, "\(k) - \(v)")
                 }
-                log(.error, "Progressive download requires the remote HTTP server to support byte range requests: \(url)")
+                log(.error, "Progressive download using ranges requires the remote HTTP server to support byte range requests: \(url)")
                 finish(with: .failure(HTTPError(kind: .other, cause: ProgressiveDownloadError.byteRangesNotSupported(url: url))))
 
                 completionHandler(.cancel)
                 return
             }
 
-            self.expectedBytes = (response.allHeaderFields["Content-Length"] as? String)
-                .flatMap { Int64($0) }
-                .takeIf { $0 > 0 }
+            let clientResponse = HTTPResponse(response: response)
+            state = .download(clientResponse, readBytes: 0)
+            self.receiveResponse?(clientResponse)
 
-            self.receiveResponse?(HTTPResponse(response: response))
         }
 
         completionHandler(.allow)
     }
 
     func urlSession(_ session: URLSession, didReceive data: Data) {
-        guard !isFinished else {
-            return
-        }
+        switch state {
+        case .loading, .finished:
+            break
 
-        readBytes += Int64(data.count)
-        var progress: Double? = nil
-        if let expectedBytes = expectedBytes {
-            progress = Double(min(readBytes, expectedBytes)) / Double(expectedBytes)
-        }
+        case .download(let response, var readBytes):
+            readBytes += Int64(data.count)
+            // FIXME: Use task.progress.fractionCompleted once we bump minimum iOS version to 11+
+            var progress: Double? = nil
+            if let expectedBytes = response.contentLength {
+                progress = Double(min(readBytes, expectedBytes)) / Double(expectedBytes)
+            }
+            consumeData(data, progress)
+            state = .download(response, readBytes: readBytes)
 
-        consumeData(data, progress)
+        case .error(let error, var body):
+            body.append(data)
+            state = .error(error, body: body)
+        }
     }
 
     func urlSession(_ session: URLSession, didCompleteWithError error: Error?) {
-        if let error: HTTPError = {
-            if let error = error {
-                return HTTPError(error: error)
-            } else if let response = response {
-                return HTTPError(statusCode: response.statusCode)
-            } else {
-                return HTTPError(kind: .malformedResponse)
-            }
-        }() {
-            finish(with: .failure(error))
-        } else {
-            finish(with: .success(()))
+        if let error = error {
+            finish(with: .failure(HTTPError(error: error)))
+            return
+        }
+
+        switch state {
+        case .loading:
+            preconditionFailure("ProgressiveDownloadTask.didCompleteWithError called in loading state")
+
+        case let .download(response, _):
+            finish(with: .success(response))
+
+        case let .error(error, body):
+            finish(with: .failure(HTTPError(kind: error.kind, mediaType: error.mediaType, body: body)))
+
+        case .finished:
+            break
         }
     }
 
-    private var isFinished = false
-
-    private func finish(with result: HTTPResult<Void>) {
-        guard !isFinished else {
+    private func finish(with result: HTTPResult<HTTPResponse>) {
+        if case .finished = state {
             return
         }
-        isFinished = true
+        state = .finished
 
         if case .failure(let error) = result, error.kind != .cancelled {
             log(.error, "Download (progressive) failed for: \(task.originalRequest?.url?.absoluteString ?? "N/A") with error: \(error.localizedDescription)")
         }
 
-        guard let response = response else {
-            completion(.failure(HTTPError(kind: .malformedResponse)))
-            return
-        }
-        completion(result.map { HTTPResponse(response: response) })
+        completion(result)
     }
 
 }

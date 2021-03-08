@@ -77,25 +77,13 @@ public struct HTTPError: LocalizedError, Equatable, Loggable {
     /// Response body parsed as a JSON problem details.
     public let problemDetails: HTTPProblemDetails?
 
-    public init(kind: Kind, cause: Error? = nil) {
+    public init(kind: Kind, cause: Error? = nil, mediaType: MediaType? = nil, body: Data? = nil) {
         self.kind = kind
         self.cause = cause
-        self.mediaType = nil
-        self.body = nil
-        self.problemDetails = nil
-    }
-
-    public init?(statusCode: Int, mediaType: MediaType? = nil, body: Data? = nil) {
-        guard let kind = Kind(statusCode: statusCode) else {
-            return nil
-        }
-
-        self.kind = kind
-        self.cause = nil
         self.mediaType = mediaType
         self.body = body
 
-        problemDetails = {
+        self.problemDetails = {
             if let body = body, mediaType?.matches(.problemDetails) == true {
                 do {
                     return try HTTPProblemDetails(data: body)
@@ -105,6 +93,13 @@ public struct HTTPError: LocalizedError, Equatable, Loggable {
             }
             return nil
         }()
+    }
+
+    public init?(statusCode: Int, mediaType: MediaType? = nil, body: Data? = nil) {
+        guard let kind = Kind(statusCode: statusCode) else {
+            return nil
+        }
+        self.init(kind: kind, mediaType: mediaType, body: body)
     }
 
     /// Creates an `HTTPError` from a native `URLError` or another error.
