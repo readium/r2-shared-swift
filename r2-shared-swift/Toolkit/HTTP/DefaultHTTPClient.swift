@@ -116,10 +116,8 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
 
     public func fetch(_ request: URLRequestConvertible, completion: @escaping (HTTPResult<HTTPFetchResponse>) -> ()) -> Cancellable {
         return startRequest(request,
-            createTask: { request in
-                self.log(.info, "Fetch (\(request.httpMethod ?? "GET")) \(request.url?.absoluteString ?? "nil"), headers: \(request.allHTTPHeaderFields ?? [:])")
-
-                return FetchTask(
+            createTask: { request, completion in
+                FetchTask(
                     client: self,
                     task: self.session.dataTask(with: request),
                     completion: completion
@@ -136,10 +134,8 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
         }
 
         return startRequest(request,
-            createTask: { request in
-                self.log(.info, "Download (progressive) \(request), headers: \(request.allHTTPHeaderFields ?? [:])")
-
-                return ProgressiveDownloadTask(
+            createTask: { request, completion in
+                ProgressiveDownloadTask(
                     client: self,
                     task: self.session.dataTask(with: request),
                     isByteRangeRequest: range != nil,
@@ -153,26 +149,53 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
     }
 
     /// Prepares and start a new HTTP request, using the given `Task` factory.
-    private func startRequest<T>(_ request: URLRequestConvertible, createTask: @escaping (URLRequest) -> Task, completion: @escaping (HTTPResult<T>) -> Void) -> Cancellable {
-        let cancellable = MediatorCancellable()
+    private func startRequest<T>(
+        _ request: URLRequestConvertible,
+        createTask: @escaping (_ request: URLRequest, _ completion: @escaping (HTTPResult<T>) -> Void) -> Task,
+        completion: @escaping (HTTPResult<T>) -> Void
+    ) -> Cancellable {
 
-        willStartRequest(request.urlRequest) { result in
-            guard !cancellable.isCancelled else {
-                completion(.failure(HTTPError(kind: .cancelled)))
-                return
-            }
+        func start(_ request: URLRequestConvertible, with mediator: MediatorCancellable) {
+            let request = request.urlRequest
 
-            switch result {
-            case .success(let request):
-                let task = createTask(request.urlRequest)
-                cancellable.mediate(self.start(task))
+            willStartRequest(request) { result in
+                guard !mediator.isCancelled else {
+                    completion(.failure(HTTPError(kind: .cancelled)))
+                    return
+                }
 
-            case .failure(let error):
-                completion(.failure(error))
+                switch result {
+                case .success(let request):
+                    let request = request.urlRequest
+
+                    let task = createTask(request) { result in
+                        switch result {
+                        case .success(let value):
+                            completion(.success(value))
+
+                        case .failure(let error):
+                            self.recoverRequest(request, fromError: error) { result in
+                                switch result {
+                                case .success(let newRequest):
+                                    start(newRequest, with: mediator)
+                                case .failure(let error):
+                                    completion(.failure(error))
+                                }
+                            }
+                        }
+                    }
+
+                    mediator.mediate(self.start(task))
+
+                case .failure(let error):
+                    completion(.failure(error))
+                }
             }
         }
 
-        return cancellable
+        let mediator = MediatorCancellable()
+        start(request, with: mediator)
+        return mediator
     }
 
     private func willStartRequest(_ request: URLRequest, completion: @escaping (HTTPResult<URLRequestConvertible>) -> Void) {
@@ -180,6 +203,14 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
             delegate.httpClient(self, willStartRequest: request, completion: completion)
         } else {
             completion(.success(request))
+        }
+    }
+
+    private func recoverRequest(_ request: URLRequest, fromError error: HTTPError, completion: @escaping (HTTPResult<URLRequestConvertible>) -> Void) {
+        if let delegate = delegate {
+            delegate.httpClient(self, recoverRequest: request, fromError: error, completion: completion)
+        } else {
+            completion(.failure(error))
         }
     }
 
@@ -258,6 +289,10 @@ private class BaseTask<T>: Task, Loggable {
     }
 
     func start() {
+        if let request = task.originalRequest {
+            self.log(.info, "\(Self.title) (\(request.httpMethod ?? "GET")) \(request.url?.absoluteString ?? "nil"), headers: \(request.allHTTPHeaderFields ?? [:])")
+        }
+
         task.resume()
     }
 
