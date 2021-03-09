@@ -7,7 +7,7 @@
 import Foundation
 
 /// Delegate protocol for `DefaultHTTPClient`.
-public protocol DefaultHTTPClientDelegate {
+public protocol DefaultHTTPClientDelegate: class {
 
     /// Tells the delegate that the HTTP client will start a new `request`.
     ///
@@ -106,7 +106,7 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
         self.delegate = delegate
     }
 
-    public var delegate: DefaultHTTPClientDelegate? = nil
+    public weak var delegate: DefaultHTTPClientDelegate? = nil
 
     private var session: URLSession!
 
@@ -115,11 +115,12 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
     }
 
     public func fetch(_ request: URLRequestConvertible, completion: @escaping (HTTPResult<HTTPFetchResponse>) -> ()) -> Cancellable {
-        startRequest(request,
+        return startRequest(request,
             createTask: { request in
                 self.log(.info, "Fetch (\(request.httpMethod ?? "GET")) \(request.url?.absoluteString ?? "nil"), headers: \(request.allHTTPHeaderFields ?? [:])")
 
                 return FetchTask(
+                    client: self,
                     task: self.session.dataTask(with: request),
                     completion: completion
                 )
@@ -139,6 +140,7 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
                 self.log(.info, "Download (progressive) \(request), headers: \(request.allHTTPHeaderFields ?? [:])")
 
                 return ProgressiveDownloadTask(
+                    client: self,
                     task: self.session.dataTask(with: request),
                     isByteRangeRequest: range != nil,
                     receiveResponse: receiveResponse,
@@ -223,23 +225,37 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
         guard let i = findTaskIndex(task) else {
             return
         }
-        tasks.remove(at: i)
-            .urlSession(session, didCompleteWithError: error)
+        tasks[i].urlSession(session, didCompleteWithError: error)
     }
 
 }
-
 
 /// Represents an on-going HTTP task.
 private protocol Task: Cancellable {
     var task: URLSessionTask { get }
 
+    func start()
     func urlSession(_ session: URLSession, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> ())
     func urlSession(_ session: URLSession, didReceive data: Data)
     func urlSession(_ session: URLSession, didCompleteWithError error: Error?)
 }
 
-private extension Task {
+private class BaseTask<T>: Task, Loggable {
+
+    class var title: String {
+        fatalError("To override in subclasses")
+    }
+
+    weak var client: DefaultHTTPClient?
+    let task: URLSessionTask
+    private(set) var isFinished = false
+    private let completion: (HTTPResult<T>) -> Void
+
+    init(client: DefaultHTTPClient?, task: URLSessionTask, completion: @escaping (HTTPResult<T>) -> Void) {
+        self.client = client
+        self.task = task
+        self.completion = completion
+    }
 
     func start() {
         task.resume()
@@ -249,24 +265,52 @@ private extension Task {
         task.cancel()
     }
 
+    func finish(with result: HTTPResult<T>) {
+        guard !isFinished else {
+            return
+        }
+        isFinished = true
+
+        if case .failure(let error) = result, error.kind != .cancelled {
+            log(.error, "\(Self.title) failed for: \(task.originalRequest?.url?.absoluteString ?? "N/A") with error: \(error.localizedDescription)")
+
+            if let client = client, let request = task.originalRequest {
+                client.delegate?.httpClient(client, request: request, didFailWithError: error)
+            }
+        }
+
+        completion(result)
+    }
+
+    func didReceiveResponse(_ response: HTTPResponse) {
+        if let client = client, let request = task.originalRequest {
+            client.delegate?.httpClient(client, request: request, didReceiveResponse: response)
+        }
+    }
+
+    func urlSession(_ session: URLSession, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> ()) {
+        fatalError("To implement in subclasses")
+    }
+
+    func urlSession(_ session: URLSession, didReceive data: Data) {
+        fatalError("To implement in subclasses")
+    }
+
+    func urlSession(_ session: URLSession, didCompleteWithError error: Error?) {
+        fatalError("To implement in subclasses")
+    }
+
 }
 
 /// Represents an on-going fetch HTTP task.
-private final class FetchTask: Task, Loggable {
-
-    let task: URLSessionTask
-    private let completion: (HTTPResult<HTTPFetchResponse>) -> Void
+private final class FetchTask: BaseTask<HTTPFetchResponse> {
+    override class var title: String { "Fetch" }
 
     private var response: HTTPURLResponse? = nil
     /// Body data accumulator.
     private var body = Data()
 
-    init(task: URLSessionDataTask, completion: @escaping (HTTPResult<HTTPFetchResponse>) -> Void) {
-        self.task = task
-        self.completion = completion
-    }
-
-    func urlSession(_ session: URLSession, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> ()) {
+    override func urlSession(_ session: URLSession, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> ()) {
         guard !isFinished else {
             completionHandler(.cancel)
             return
@@ -276,7 +320,7 @@ private final class FetchTask: Task, Loggable {
         completionHandler(.allow)
     }
 
-    func urlSession(_ session: URLSession, didReceive data: Data) {
+    override func urlSession(_ session: URLSession, didReceive data: Data) {
         guard !isFinished else {
             return
         }
@@ -284,7 +328,7 @@ private final class FetchTask: Task, Loggable {
         body.append(data)
     }
 
-    func urlSession(_ session: URLSession, didCompleteWithError error: Error?) {
+    override func urlSession(_ session: URLSession, didCompleteWithError error: Error?) {
         didCompleteWith(session: session, response: response, data: body, error: error, canRetry: true)
     }
 
@@ -314,31 +358,15 @@ private final class FetchTask: Task, Loggable {
             return
         }
 
-        return finish(with: .success((response: HTTPResponse(response: response, body: body), body: body)))
-    }
-
-    private var isFinished = false
-
-    private func finish(with result: HTTPResult<HTTPFetchResponse>) {
-        guard !isFinished else {
-            return
-        }
-        isFinished = true
-
-        switch result {
-        case .success(let response):
-            completion(.success(response))
-        case .failure(let error):
-            if error.kind != .cancelled {
-                log(.error, "Fetch failed for: \(task.originalRequest?.url?.absoluteString ?? "N/A") with error: \(error.localizedDescription)")
-            }
-            completion(.failure(error))
-        }
+        let httpResponse = HTTPResponse(response: response, body: body)
+        didReceiveResponse(httpResponse)
+        finish(with: .success((response: httpResponse, body: body)))
     }
 }
 
 /// Represents an on-going progressive download HTTP task.
-private final class ProgressiveDownloadTask: Task, Loggable {
+private final class ProgressiveDownloadTask: BaseTask<HTTPResponse> {
+    override class var title: String { "Download (progressive)" }
 
     enum ProgressiveDownloadError: LocalizedError {
         case byteRangesNotSupported(url: String)
@@ -360,28 +388,24 @@ private final class ProgressiveDownloadTask: Task, Loggable {
         /// We received an error response, the data will be accumulated in `body` to make the final `HTTPError`.
         /// The body is needed for example when the response is an OPDS Authentication Document.
         case error(HTTPError, body: Data)
-        /// This task is finished.
-        case finished
     }
 
     private var state: State = .loading
 
-    let task: URLSessionTask
     private let isByteRangeRequest: Bool
     private let receiveResponse: ((HTTPResponse) -> Void)?
     private let consumeData: (Data, Double?) -> Void
-    private let completion: (HTTPResult<HTTPResponse>) -> Void
 
-    init(task: URLSessionDataTask, isByteRangeRequest: Bool, receiveResponse: ((HTTPResponse) -> Void)?, consumeData: @escaping (Data, Double?) -> Void, completion: @escaping (HTTPResult<HTTPResponse>) -> Void) {
-        self.task = task
+    init(client: DefaultHTTPClient?, task: URLSessionDataTask, isByteRangeRequest: Bool, receiveResponse: ((HTTPResponse) -> Void)?, consumeData: @escaping (Data, Double?) -> Void, completion: @escaping (HTTPResult<HTTPResponse>) -> Void) {
         self.isByteRangeRequest = isByteRangeRequest
         self.receiveResponse = receiveResponse
         self.consumeData = consumeData
-        self.completion = completion
+
+        super.init(client: client, task: task, completion: completion)
     }
 
-    func urlSession(_ session: URLSession, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> ()) {
-        if case .finished = state {
+    override func urlSession(_ session: URLSession, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> ()) {
+        guard !isFinished else {
             completionHandler(.cancel)
             return
         }
@@ -417,9 +441,13 @@ private final class ProgressiveDownloadTask: Task, Loggable {
         completionHandler(.allow)
     }
 
-    func urlSession(_ session: URLSession, didReceive data: Data) {
+    override func urlSession(_ session: URLSession, didReceive data: Data) {
+        guard !isFinished else {
+            return
+        }
+
         switch state {
-        case .loading, .finished:
+        case .loading:
             break
 
         case .download(let response, var readBytes):
@@ -438,7 +466,11 @@ private final class ProgressiveDownloadTask: Task, Loggable {
         }
     }
 
-    func urlSession(_ session: URLSession, didCompleteWithError error: Error?) {
+    override func urlSession(_ session: URLSession, didCompleteWithError error: Error?) {
+        guard !isFinished else {
+            return
+        }
+
         if let error = error {
             finish(with: .failure(HTTPError(error: error)))
             return
@@ -453,23 +485,7 @@ private final class ProgressiveDownloadTask: Task, Loggable {
 
         case let .error(error, body):
             finish(with: .failure(HTTPError(kind: error.kind, mediaType: error.mediaType, body: body)))
-
-        case .finished:
-            break
         }
-    }
-
-    private func finish(with result: HTTPResult<HTTPResponse>) {
-        if case .finished = state {
-            return
-        }
-        state = .finished
-
-        if case .failure(let error) = result, error.kind != .cancelled {
-            log(.error, "Download (progressive) failed for: \(task.originalRequest?.url?.absoluteString ?? "N/A") with error: \(error.localizedDescription)")
-        }
-
-        completion(result)
     }
 
 }
