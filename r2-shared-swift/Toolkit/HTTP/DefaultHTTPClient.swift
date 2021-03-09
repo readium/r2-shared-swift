@@ -116,7 +116,7 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
 
     public func fetch(_ request: URLRequestConvertible, completion: @escaping (HTTPResult<HTTPFetchResponse>) -> ()) -> Cancellable {
         return startRequest(request,
-            createTask: { request, completion in
+            makeTask: { request, completion in
                 FetchTask(
                     client: self,
                     task: self.session.dataTask(with: request),
@@ -134,7 +134,7 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
         }
 
         return startRequest(request,
-            createTask: { request, completion in
+            makeTask: { request, completion in
                 ProgressiveDownloadTask(
                     client: self,
                     task: self.session.dataTask(with: request),
@@ -151,67 +151,84 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
     /// Prepares and start a new HTTP request, using the given `Task` factory.
     private func startRequest<T>(
         _ request: URLRequestConvertible,
-        createTask: @escaping (_ request: URLRequest, _ completion: @escaping (HTTPResult<T>) -> Void) -> Task,
+        makeTask: @escaping (_ request: URLRequest, _ completion: @escaping (HTTPResult<T>) -> Void) -> Task,
         completion: @escaping (HTTPResult<T>) -> Void
     ) -> Cancellable {
 
-        func start(_ request: URLRequestConvertible, with mediator: MediatorCancellable) {
+        let mediator = MediatorCancellable()
+
+        /// Attempts to start a `request`.
+        /// Will try to recover from errors using the `delegate` and calling itself again.
+        func tryStart(_ request: URLRequestConvertible) -> HTTPDeferred<T> {
             let request = request.urlRequest
 
-            willStartRequest(request) { result in
-                guard !mediator.isCancelled else {
-                    completion(.failure(HTTPError(kind: .cancelled)))
-                    return
-                }
-
-                switch result {
-                case .success(let request):
+            return willStartRequest(request)
+                .flatMap(requireNotCancelled)
+                .flatMap { request in
                     let request = request.urlRequest
 
-                    let task = createTask(request) { result in
-                        switch result {
-                        case .success(let value):
-                            completion(.success(value))
-
-                        case .failure(let error):
-                            self.recoverRequest(request, fromError: error) { result in
-                                switch result {
-                                case .success(let newRequest):
-                                    start(newRequest, with: mediator)
-                                case .failure(let error):
-                                    completion(.failure(error))
+                    return startTask(for: request)
+                        .flatCatch { error in
+                            recoverRequest(request, fromError: error)
+                                .flatMap(requireNotCancelled)
+                                .flatMap { newRequest in
+                                    tryStart(newRequest)
                                 }
-                            }
                         }
-                    }
+                }
+        }
 
-                    mediator.mediate(self.start(task))
+        /// Will interrupt the flow if the `mediator` received a cancel request.
+        func requireNotCancelled<T>(_ value: T) -> HTTPDeferred<T> {
+            if mediator.isCancelled {
+                return .failure(HTTPError(kind: .cancelled))
+            } else {
+                return .success(value)
+            }
+        }
 
-                case .failure(let error):
+        /// Creates and starts a new task for the `request`, whose cancellable will be exposed through `mediator`.
+        func startTask(for request: URLRequest) -> HTTPDeferred<T> {
+            deferred { completion in
+                let task = makeTask(request) { result in
+                    completion(CancellableResult(result))
+                }
+
+                let cancellable = self.start(task)
+                mediator.mediate(cancellable)
+            }
+        }
+
+        /// Lets the `delegate` customize the `request` if needed, before actually starting it.
+        func willStartRequest(_ request: URLRequest) -> HTTPDeferred<URLRequestConvertible> {
+            deferred { completion in
+                if let delegate = self.delegate {
+                    delegate.httpClient(self, willStartRequest: request) { completion(CancellableResult($0)) }
+                } else {
+                    completion(.success(request))
+                }
+            }
+        }
+
+        /// Attempts to recover from a `error` by asking the `delegate` for a new request.
+        func recoverRequest(_ request: URLRequest, fromError error: HTTPError) -> HTTPDeferred<URLRequestConvertible> {
+            deferred { completion in
+                if let delegate = self.delegate {
+                    delegate.httpClient(self, recoverRequest: request, fromError: error) { completion(CancellableResult($0)) }
+                } else {
                     completion(.failure(error))
                 }
             }
         }
 
-        let mediator = MediatorCancellable()
-        start(request, with: mediator)
+        tryStart(request)
+            .resolve(on: .main) { result in
+                // Convert a `CancellableResult` to an `HTTPResult`, as expected by the `completion` handler.
+                let result = result.result(withCancelledError: HTTPError(kind: .cancelled))
+                completion(result)
+            }
+
         return mediator
-    }
-
-    private func willStartRequest(_ request: URLRequest, completion: @escaping (HTTPResult<URLRequestConvertible>) -> Void) {
-        if let delegate = delegate {
-            delegate.httpClient(self, willStartRequest: request, completion: completion)
-        } else {
-            completion(.success(request))
-        }
-    }
-
-    private func recoverRequest(_ request: URLRequest, fromError error: HTTPError, completion: @escaping (HTTPResult<URLRequestConvertible>) -> Void) {
-        if let delegate = delegate {
-            delegate.httpClient(self, recoverRequest: request, fromError: error, completion: completion)
-        } else {
-            completion(.failure(error))
-        }
     }
 
 

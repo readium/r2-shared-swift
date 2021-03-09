@@ -7,6 +7,7 @@
 import Foundation
 
 public typealias HTTPResult<Success> = Result<Success, HTTPError>
+public typealias HTTPDeferred<Success> = Deferred<Success, HTTPError>
 
 /// Represents an error occurring during an `HTTPClient` activity.
 public struct HTTPError: LocalizedError, Equatable, Loggable {
