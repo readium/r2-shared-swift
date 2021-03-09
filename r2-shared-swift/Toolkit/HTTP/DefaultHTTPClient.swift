@@ -6,28 +6,107 @@
 
 import Foundation
 
+/// Delegate protocol for `DefaultHTTPClient`.
+public protocol DefaultHTTPClientDelegate {
+
+    /// Tells the delegate that the HTTP client will start a new `request`.
+    ///
+    /// Warning: You MUST call the `completion` handler with the request to start, otherwise the client will hang.
+    ///
+    /// You can modify the `request`, for example by adding additional HTTP headers or redirecting to a different URL,
+    /// before calling the `completion` handler with the new request.
+    func httpClient(_ httpClient: DefaultHTTPClient, willStartRequest request: URLRequest, completion: @escaping (HTTPResult<URLRequestConvertible>) -> Void)
+
+    /// Asks the delegate to recover from an `error` received for the given `request`.
+    ///
+    /// This can be used to implement custom authentication flows, for example.
+    ///
+    /// You can call the `completion` handler with either:
+    ///   * a new request to start
+    ///   * the `error` argument, if you cannot recover from it
+    ///   * a new `HTTPError` to provide additional information
+    func httpClient(_ httpClient: DefaultHTTPClient, recoverRequest request: URLRequest, fromError error: HTTPError, completion: @escaping (HTTPResult<URLRequestConvertible>) -> Void)
+
+    /// Tells the delegate that we received an HTTP response for the given `request`.
+    ///
+    /// You do not need to do anything with this `response`, which the HTTP client will handle. This is merely for
+    /// informational purposes. For example, you could implement this to confirm that request credentials were
+    /// successful.
+    func httpClient(_ httpClient: DefaultHTTPClient, request: URLRequest, didReceiveResponse response: HTTPResponse)
+
+    /// Tells the delegate that a `request` failed with the given `error`.
+    ///
+    /// You do not need to do anything with this `response`, which the HTTP client will handle. This is merely for
+    /// informational purposes.
+    ///
+    /// This will be called only if `httpClient(_:recoverRequest:fromError:completion:)` is not implemented, or returns
+    /// an error.
+    func httpClient(_ httpClient: DefaultHTTPClient, request: URLRequest, didFailWithError error: HTTPError)
+
+}
+
+public extension DefaultHTTPClientDelegate {
+
+    func httpClient(_ httpClient: DefaultHTTPClient, willStartRequest request: URLRequest, completion: @escaping (HTTPResult<URLRequestConvertible>) -> ()) {
+        completion(.success(request))
+    }
+
+    func httpClient(_ httpClient: DefaultHTTPClient, recoverRequest request: URLRequest, fromError error: HTTPError, completion: @escaping (HTTPResult<URLRequestConvertible>) -> ()) {
+        completion(.failure(error))
+    }
+
+    func httpClient(_ httpClient: DefaultHTTPClient, request: URLRequest, didReceiveResponse response: HTTPResponse) {}
+    func httpClient(_ httpClient: DefaultHTTPClient, request: URLRequest, didFailWithError error: HTTPError) {}
+
+}
+
 /// An implementation of `HTTPClient` using native APIs.
 public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSessionDataDelegate {
 
     /// Creates a `DefaultHTTPClient` with common configuration settings.
     ///
     /// - Parameters:
-    ///   - cachePolicy: Determines the request caching policy used by HTTP tasks.
     ///   - ephemeral: When true, uses no persistent storage for caches, cookies, or credentials.
-    public convenience init(cachePolicy: URLRequest.CachePolicy? = nil, ephemeral: Bool = false) {
+    ///   - cachePolicy: Determines the request caching policy used by HTTP tasks.
+    ///   - additionalHeaders: A dictionary of additional headers to send with requests. For example, `User-Agent`.
+    ///   - requestTimeout: The timeout interval to use when waiting for additional data.
+    ///   - resourceTimeout: The maximum amount of time that a resource request should be allowed to take.
+    ///   - configure: Callback used to configure further the `URLSessionConfiguration` object.
+    public convenience init(
+        cachePolicy: URLRequest.CachePolicy? = nil,
+        ephemeral: Bool = false,
+        additionalHeaders: [AnyHashable: Any]? = nil,
+        requestTimeout: TimeInterval? = nil,
+        resourceTimeout: TimeInterval? = nil,
+        delegate: DefaultHTTPClientDelegate? = nil,
+        configure: ((URLSessionConfiguration) -> Void)? = nil
+    ) {
         let config: URLSessionConfiguration = ephemeral ? .ephemeral : .default
+        config.httpAdditionalHeaders = additionalHeaders
         if let cachePolicy = cachePolicy {
             config.requestCachePolicy = cachePolicy
         }
+        if let requestTimeout = requestTimeout {
+            config.timeoutIntervalForRequest = requestTimeout
+        }
+        if let resourceTimeout = resourceTimeout {
+            config.timeoutIntervalForResource = resourceTimeout
+        }
+        if let configure = configure {
+            configure(config)
+        }
 
-        self.init(configuration: config)
+        self.init(configuration: config, delegate: delegate)
     }
 
     /// Creates a `DefaultHTTPClient` with a custom configuration.
-    public init(configuration: URLSessionConfiguration) {
+    public init(configuration: URLSessionConfiguration, delegate: DefaultHTTPClientDelegate? = nil) {
         super.init()
-        session = URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
+        self.session = URLSession(configuration: configuration, delegate: self, delegateQueue: nil)
+        self.delegate = delegate
     }
+
+    public var delegate: DefaultHTTPClientDelegate? = nil
 
     private var session: URLSession!
 
@@ -36,15 +115,17 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
     }
 
     public func fetch(_ request: URLRequestConvertible, completion: @escaping (HTTPResult<HTTPFetchResponse>) -> ()) -> Cancellable {
-        let urlRequest = request.urlRequest
-        log(.info, "Fetch (\(urlRequest.httpMethod ?? "GET")) \(request), headers: \(urlRequest.allHTTPHeaderFields ?? [:])")
+        startRequest(request,
+            createTask: { request in
+                self.log(.info, "Fetch (\(request.httpMethod ?? "GET")) \(request.url?.absoluteString ?? "nil"), headers: \(request.allHTTPHeaderFields ?? [:])")
 
-        let task = FetchTask(
-            task: session.dataTask(with: urlRequest),
+                return FetchTask(
+                    task: self.session.dataTask(with: request),
+                    completion: completion
+                )
+            },
             completion: completion
         )
-
-        return start(task)
     }
 
     public func progressiveDownload(_ request: URLRequestConvertible, range: Range<UInt64>?, receiveResponse: ((HTTPResponse) -> Void)?, consumeData: @escaping (Data, Double?) -> Void, completion: @escaping (HTTPResult<HTTPResponse>) -> Void) -> Cancellable {
@@ -53,17 +134,51 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
             request.setBytesRange(range)
         }
 
-        log(.info, "Download (progressive) \(request), headers: \(request.allHTTPHeaderFields ?? [:])")
+        return startRequest(request,
+            createTask: { request in
+                self.log(.info, "Download (progressive) \(request), headers: \(request.allHTTPHeaderFields ?? [:])")
 
-        let task = ProgressiveDownloadTask(
-            task: session.dataTask(with: request),
-            isByteRangeRequest: range != nil,
-            receiveResponse: receiveResponse,
-            consumeData: consumeData,
+                return ProgressiveDownloadTask(
+                    task: self.session.dataTask(with: request),
+                    isByteRangeRequest: range != nil,
+                    receiveResponse: receiveResponse,
+                    consumeData: consumeData,
+                    completion: completion
+                )
+            },
             completion: completion
         )
+    }
 
-        return start(task)
+    /// Prepares and start a new HTTP request, using the given `Task` factory.
+    private func startRequest<T>(_ request: URLRequestConvertible, createTask: @escaping (URLRequest) -> Task, completion: @escaping (HTTPResult<T>) -> Void) -> Cancellable {
+        let cancellable = MediatorCancellable()
+
+        willStartRequest(request.urlRequest) { result in
+            guard !cancellable.isCancelled else {
+                completion(.failure(HTTPError(kind: .cancelled)))
+                return
+            }
+
+            switch result {
+            case .success(let request):
+                let task = createTask(request.urlRequest)
+                cancellable.mediate(self.start(task))
+
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+
+        return cancellable
+    }
+
+    private func willStartRequest(_ request: URLRequest, completion: @escaping (HTTPResult<URLRequestConvertible>) -> Void) {
+        if let delegate = delegate {
+            delegate.httpClient(self, willStartRequest: request, completion: completion)
+        } else {
+            completion(.success(request))
+        }
     }
 
 
