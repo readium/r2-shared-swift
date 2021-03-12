@@ -394,8 +394,8 @@ private final class FetchTask: BaseTask<HTTPFetchResponse> {
 
         guard let body = data, response.statusCode < 400 else {
             if canRetry, var request = task.originalRequest, request.httpMethod?.uppercased() == "HEAD" {
-                // It was a HEAD request, we need to query the resource again to get the error body.
-                /// The body is needed for example when the response is an OPDS Authentication Document.
+                // It was a HEAD request? We need to query the resource again to get the error body.
+                // The body is needed for example when the response is an OPDS Authentication Document.
                 request.httpMethod = "GET"
                 session.dataTask(with: request) { data, response, error in
                     self.didCompleteWith(session: session, response: response, data: data, error: error, canRetry: false)
@@ -473,10 +473,6 @@ private final class ProgressiveDownloadTask: BaseTask<HTTPResponse> {
         } else {
             guard !isByteRangeRequest || response.acceptsByteRanges else {
                 let url = task.originalRequest?.url?.absoluteString ?? "N/A"
-                log(.debug, url)
-                for (k, v) in response.allHeaderFields {
-                    log(.debug, "\(k) - \(v)")
-                }
                 log(.error, "Progressive download using ranges requires the remote HTTP server to support byte range requests: \(url)")
                 finish(with: .failure(HTTPError(kind: .other, cause: ProgressiveDownloadError.byteRangesNotSupported(url: url))))
 

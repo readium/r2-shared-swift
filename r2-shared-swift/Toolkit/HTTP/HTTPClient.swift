@@ -155,7 +155,9 @@ public struct HTTPResponse {
     }
 
     /// The expected content length for this response, when known.
-    /// Warning: For byte range requests, this will
+    ///
+    /// Warning: For byte range requests, this will be the length of the current chunk,
+    /// not the whole resource.
     public var contentLength: Int64? {
         valueForHeader("Content-Length")
             .flatMap { Int64($0) }

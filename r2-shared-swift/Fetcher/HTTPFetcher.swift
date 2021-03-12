@@ -14,7 +14,7 @@ public final class HTTPFetcher: Fetcher, Loggable {
         case serverFailure
     }
 
-    /// HTP client used to perform HTTP requests.
+    /// HTTP client used to perform HTTP requests.
     private let client: HTTPClient
     /// Base URL from which relative HREF are served.
     private let baseURL: URL?
