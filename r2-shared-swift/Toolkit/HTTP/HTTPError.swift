@@ -141,7 +141,10 @@ public struct HTTPError: LocalizedError, Equatable, Loggable {
     }
 
     public var errorDescription: String? {
-        if let message = problemDetails?.title {
+        if var message = problemDetails?.title {
+            if let detail = problemDetails?.detail {
+                message += "\n" + detail
+            }
             return message
         }
 
