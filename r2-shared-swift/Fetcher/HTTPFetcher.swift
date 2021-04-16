@@ -69,7 +69,6 @@ public final class HTTPFetcher: Fetcher, Loggable {
             request.httpMethod = "HEAD"
 
             return client.synchronousFetch(request)
-                .map { $0.response }
                 .mapError { ResourceError(httpError: $0) }
         }()
 

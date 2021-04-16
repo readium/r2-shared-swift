@@ -13,7 +13,7 @@ import UIKit
 public protocol HTTPClient: Loggable {
 
     /// Fetches the resource from the given `request`.
-    func fetch(_ request: URLRequestConvertible, completion: @escaping (HTTPResult<HTTPFetchResponse>) -> Void) -> Cancellable
+    func fetch(_ request: URLRequestConvertible, completion: @escaping (HTTPResult<HTTPResponse>) -> Void) -> Cancellable
 
     /// Downloads a resource progressively.
     ///
@@ -49,8 +49,8 @@ public extension HTTPClient {
         completion: @escaping (HTTPResult<T>) -> Void
     ) -> Cancellable {
         fetch(request) { response in
-            let result = response.flatMap { response, body -> HTTPResult<T> in
-                guard let result = try? decoder(response, body) else {
+            let result = response.flatMap { response -> HTTPResult<T> in
+                guard let body = response.body, let result = try? decoder(response, body) else {
                     return .failure(HTTPError(kind: .malformedResponse))
                 }
                 return .success(result)
@@ -87,10 +87,10 @@ public extension HTTPClient {
     }
 
     /// Fetches a resource synchronously.
-    func synchronousFetch(_ request: URLRequestConvertible) -> HTTPResult<HTTPFetchResponse> {
+    func synchronousFetch(_ request: URLRequestConvertible) -> HTTPResult<HTTPResponse> {
         warnIfMainThread()
 
-        var result: HTTPResult<HTTPFetchResponse>!
+        var result: HTTPResult<HTTPResponse>!
 
         let semaphore = DispatchSemaphore(value: 0)
         _ = fetch(request) {
@@ -104,10 +104,14 @@ public extension HTTPClient {
 
 }
 
-public typealias HTTPFetchResponse = (response: HTTPResponse, body: Data)
-
 /// Represents a successful HTTP response received from a server.
-public struct HTTPResponse {
+public struct HTTPResponse: Equatable {
+
+    /// URL for the response, after any redirect.
+    public let url: URL
+
+    /// HTTP status code returned by the server.
+    public let statusCode: Int
 
     /// HTTP response headers, indexed by their name.
     public let headers: [String: String]
@@ -116,12 +120,18 @@ public struct HTTPResponse {
     /// Falls back on `application/octet-stream`.
     public let mediaType: MediaType
 
-    public init(headers: [String: String], mediaType: MediaType) {
+    /// Response body content, when available.
+    public var body: Data?
+
+    public init(url: URL, statusCode: Int, headers: [String: String], mediaType: MediaType, body: Data?) {
+        self.url = url
+        self.statusCode = statusCode
         self.headers = headers
         self.mediaType = mediaType
+        self.body = body
     }
 
-    public init(response: HTTPURLResponse, body: Data? = nil) {
+    public init(response: HTTPURLResponse, url: URL, body: Data? = nil) {
         var headers: [String: String] = [:]
         for (k, v) in response.allHeaderFields {
             if let ks = k as? String, let vs = v as? String {
@@ -130,8 +140,11 @@ public struct HTTPResponse {
         }
 
         self.init(
+            url: url,
+            statusCode: response.statusCode,
             headers: headers,
-            mediaType: response.sniffMediaType { body ?? Data() } ?? .binary
+            mediaType: response.sniffMediaType { body ?? Data() } ?? .binary,
+            body: body
         )
     }
 

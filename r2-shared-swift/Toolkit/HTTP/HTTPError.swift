@@ -69,23 +69,19 @@ public struct HTTPError: LocalizedError, Equatable, Loggable {
     /// Underlying error, if any.
     public let cause: Error?
 
-    /// Response media type.
-    public let mediaType: MediaType?
-
-    /// Response body.
-    public let body: Data?
+    /// Received HTTP response, if any.
+    public let response: HTTPResponse?
 
     /// Response body parsed as a JSON problem details.
     public let problemDetails: HTTPProblemDetails?
 
-    public init(kind: Kind, cause: Error? = nil, mediaType: MediaType? = nil, body: Data? = nil) {
+    public init(kind: Kind, cause: Error? = nil, response: HTTPResponse? = nil) {
         self.kind = kind
         self.cause = cause
-        self.mediaType = mediaType
-        self.body = body
+        self.response = response
 
         self.problemDetails = {
-            if let body = body, mediaType?.matches(.problemDetails) == true {
+            if let body = response?.body, response?.mediaType.matches(.problemDetails) == true {
                 do {
                     return try HTTPProblemDetails(data: body)
                 } catch {
@@ -96,11 +92,11 @@ public struct HTTPError: LocalizedError, Equatable, Loggable {
         }()
     }
 
-    public init?(statusCode: Int, mediaType: MediaType? = nil, body: Data? = nil) {
-        guard let kind = Kind(statusCode: statusCode) else {
+    public init?(response: HTTPResponse) {
+        guard let kind = Kind(statusCode: response.statusCode) else {
             return nil
         }
-        self.init(kind: kind, mediaType: mediaType, body: body)
+        self.init(kind: kind, response: response)
     }
 
     /// Creates an `HTTPError` from a native `URLError` or another error.
@@ -178,8 +174,7 @@ public struct HTTPError: LocalizedError, Equatable, Loggable {
 
     public static func ==(lhs: HTTPError, rhs: HTTPError) -> Bool {
         return lhs.kind == rhs.kind
-            && lhs.mediaType == rhs.mediaType
-            && lhs.body == rhs.body
+            && lhs.response == rhs.response
             && lhs.problemDetails == rhs.problemDetails
     }
 

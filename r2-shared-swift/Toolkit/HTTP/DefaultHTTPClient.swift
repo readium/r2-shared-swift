@@ -114,7 +114,7 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
         session.invalidateAndCancel()
     }
 
-    public func fetch(_ request: URLRequestConvertible, completion: @escaping (HTTPResult<HTTPFetchResponse>) -> ()) -> Cancellable {
+    public func fetch(_ request: URLRequestConvertible, completion: @escaping (HTTPResult<HTTPResponse>) -> ()) -> Cancellable {
         return startRequest(request,
             makeTask: { request, completion in
                 FetchTask(
@@ -355,7 +355,7 @@ private class BaseTask<T>: Task, Loggable {
 }
 
 /// Represents an on-going fetch HTTP task.
-private final class FetchTask: BaseTask<HTTPFetchResponse> {
+private final class FetchTask: BaseTask<HTTPResponse> {
     override class var title: String { "Fetch" }
 
     private var response: HTTPURLResponse? = nil
@@ -388,11 +388,16 @@ private final class FetchTask: BaseTask<HTTPFetchResponse> {
         if let error = error {
             return finish(with: .failure(HTTPError(error: error)))
         }
-        guard let response = response as? HTTPURLResponse else {
+        guard
+            let response = response as? HTTPURLResponse,
+            let url = response.url
+        else {
             return finish(with: .failure(HTTPError(kind: .malformedResponse)))
         }
 
-        guard let body = data, response.statusCode < 400 else {
+        let httpResponse = HTTPResponse(response: response, url: url, body: data)
+
+        guard httpResponse.body != nil, httpResponse.statusCode < 400 else {
             if canRetry, var request = task.originalRequest, request.httpMethod?.uppercased() == "HEAD" {
                 // It was a HEAD request? We need to query the resource again to get the error body.
                 // The body is needed for example when the response is an OPDS Authentication Document.
@@ -402,17 +407,13 @@ private final class FetchTask: BaseTask<HTTPFetchResponse> {
                 }.resume()
 
             } else {
-                finish(with: .failure(
-                    HTTPError(statusCode: response.statusCode, mediaType: response.sniffMediaType { data ?? Data() }, body: data)
-                        ?? HTTPError(kind: .malformedResponse)
-                ))
+                finish(with: .failure(HTTPError(response: httpResponse) ?? HTTPError(kind: .malformedResponse)))
             }
             return
         }
 
-        let httpResponse = HTTPResponse(response: response, body: body)
         didReceiveResponse(httpResponse)
-        finish(with: .success((response: httpResponse, body: body)))
+        finish(with: .success(httpResponse))
     }
 }
 
@@ -439,7 +440,7 @@ private final class ProgressiveDownloadTask: BaseTask<HTTPResponse> {
         case download(HTTPResponse, readBytes: Int64)
         /// We received an error response, the data will be accumulated in `body` to make the final `HTTPError`.
         /// The body is needed for example when the response is an OPDS Authentication Document.
-        case error(HTTPError, body: Data)
+        case error(HTTPError.Kind, response: HTTPResponse, body: Data)
     }
 
     private var state: State = .loading
@@ -462,13 +463,18 @@ private final class ProgressiveDownloadTask: BaseTask<HTTPResponse> {
             return
         }
 
-        guard let response = response as? HTTPURLResponse else {
+        guard
+            let response = response as? HTTPURLResponse,
+            let url = response.url
+        else {
             completionHandler(.cancel)
             return
         }
 
-        if let error = HTTPError(statusCode: response.statusCode, mediaType: response.sniffMediaType()) {
-            state = .error(error, body: Data())
+        let clientResponse = HTTPResponse(response: response, url: url)
+
+        if let kind = HTTPError.Kind(statusCode: clientResponse.statusCode) {
+            state = .error(kind, response: clientResponse, body: Data())
 
         } else {
             guard !isByteRangeRequest || response.acceptsByteRanges else {
@@ -480,7 +486,6 @@ private final class ProgressiveDownloadTask: BaseTask<HTTPResponse> {
                 return
             }
 
-            let clientResponse = HTTPResponse(response: response)
             state = .download(clientResponse, readBytes: 0)
             self.receiveResponse?(clientResponse)
 
@@ -508,9 +513,9 @@ private final class ProgressiveDownloadTask: BaseTask<HTTPResponse> {
             consumeData(data, progress)
             state = .download(response, readBytes: readBytes)
 
-        case .error(let error, var body):
+        case .error(let kind, let response, var body):
             body.append(data)
-            state = .error(error, body: body)
+            state = .error(kind, response: response, body: body)
         }
     }
 
@@ -531,8 +536,9 @@ private final class ProgressiveDownloadTask: BaseTask<HTTPResponse> {
         case let .download(response, _):
             finish(with: .success(response))
 
-        case let .error(error, body):
-            finish(with: .failure(HTTPError(kind: error.kind, mediaType: error.mediaType, body: body)))
+        case .error(let kind, var response, let body):
+            response.body = body
+            finish(with: .failure(HTTPError(kind: kind, response: response)))
         }
     }
 
