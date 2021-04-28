@@ -7,7 +7,7 @@
 import Foundation
 
 /// Delegate protocol for `DefaultHTTPClient`.
-public protocol DefaultHTTPClientDelegate: class {
+public protocol DefaultHTTPClientDelegate: AnyObject {
 
     /// Tells the delegate that the HTTP client will start a new `request`.
     ///
@@ -15,7 +15,7 @@ public protocol DefaultHTTPClientDelegate: class {
     ///
     /// You can modify the `request`, for example by adding additional HTTP headers or redirecting to a different URL,
     /// before calling the `completion` handler with the new request.
-    func httpClient(_ httpClient: DefaultHTTPClient, willStartRequest request: URLRequest, completion: @escaping (HTTPResult<URLRequestConvertible>) -> Void)
+    func httpClient(_ httpClient: DefaultHTTPClient, willStartRequest request: URLRequest, userInfo: [AnyHashable: Any]?, completion: @escaping (HTTPResult<URLRequestConvertible>) -> Void)
 
     /// Asks the delegate to recover from an `error` received for the given `request`.
     ///
@@ -25,14 +25,14 @@ public protocol DefaultHTTPClientDelegate: class {
     ///   * a new request to start
     ///   * the `error` argument, if you cannot recover from it
     ///   * a new `HTTPError` to provide additional information
-    func httpClient(_ httpClient: DefaultHTTPClient, recoverRequest request: URLRequest, fromError error: HTTPError, completion: @escaping (HTTPResult<URLRequestConvertible>) -> Void)
+    func httpClient(_ httpClient: DefaultHTTPClient, recoverRequest request: URLRequest, userInfo: [AnyHashable: Any]?, fromError error: HTTPError, completion: @escaping (HTTPResult<URLRequestConvertible>) -> Void)
 
     /// Tells the delegate that we received an HTTP response for the given `request`.
     ///
     /// You do not need to do anything with this `response`, which the HTTP client will handle. This is merely for
     /// informational purposes. For example, you could implement this to confirm that request credentials were
     /// successful.
-    func httpClient(_ httpClient: DefaultHTTPClient, request: URLRequest, didReceiveResponse response: HTTPResponse)
+    func httpClient(_ httpClient: DefaultHTTPClient, request: URLRequest, userInfo: [AnyHashable: Any]?, didReceiveResponse response: HTTPResponse)
 
     /// Tells the delegate that a `request` failed with the given `error`.
     ///
@@ -41,22 +41,22 @@ public protocol DefaultHTTPClientDelegate: class {
     ///
     /// This will be called only if `httpClient(_:recoverRequest:fromError:completion:)` is not implemented, or returns
     /// an error.
-    func httpClient(_ httpClient: DefaultHTTPClient, request: URLRequest, didFailWithError error: HTTPError)
+    func httpClient(_ httpClient: DefaultHTTPClient, request: URLRequest, userInfo: [AnyHashable: Any]?, didFailWithError error: HTTPError)
 
 }
 
 public extension DefaultHTTPClientDelegate {
 
-    func httpClient(_ httpClient: DefaultHTTPClient, willStartRequest request: URLRequest, completion: @escaping (HTTPResult<URLRequestConvertible>) -> ()) {
+    func httpClient(_ httpClient: DefaultHTTPClient, willStartRequest request: URLRequest, userInfo: [AnyHashable: Any]?, completion: @escaping (HTTPResult<URLRequestConvertible>) -> ()) {
         completion(.success(request))
     }
 
-    func httpClient(_ httpClient: DefaultHTTPClient, recoverRequest request: URLRequest, fromError error: HTTPError, completion: @escaping (HTTPResult<URLRequestConvertible>) -> ()) {
+    func httpClient(_ httpClient: DefaultHTTPClient, recoverRequest request: URLRequest, userInfo: [AnyHashable: Any]?, fromError error: HTTPError, completion: @escaping (HTTPResult<URLRequestConvertible>) -> ()) {
         completion(.failure(error))
     }
 
-    func httpClient(_ httpClient: DefaultHTTPClient, request: URLRequest, didReceiveResponse response: HTTPResponse) {}
-    func httpClient(_ httpClient: DefaultHTTPClient, request: URLRequest, didFailWithError error: HTTPError) {}
+    func httpClient(_ httpClient: DefaultHTTPClient, request: URLRequest, userInfo: [AnyHashable: Any]?, didReceiveResponse response: HTTPResponse) {}
+    func httpClient(_ httpClient: DefaultHTTPClient, request: URLRequest, userInfo: [AnyHashable: Any]?, didFailWithError error: HTTPError) {}
 
 }
 
@@ -114,12 +114,14 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
         session.invalidateAndCancel()
     }
 
-    public func fetch(_ request: URLRequestConvertible, completion: @escaping (HTTPResult<HTTPResponse>) -> ()) -> Cancellable {
+    public func fetch(_ request: URLRequestConvertible, userInfo: [AnyHashable: Any]?, completion: @escaping (HTTPResult<HTTPResponse>) -> ()) -> Cancellable {
         return startRequest(request,
+            userInfo: userInfo,
             makeTask: { request, completion in
                 FetchTask(
                     client: self,
                     task: self.session.dataTask(with: request),
+                    userInfo: userInfo,
                     completion: completion
                 )
             },
@@ -127,17 +129,19 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
         )
     }
 
-    public func progressiveDownload(_ request: URLRequestConvertible, range: Range<UInt64>?, receiveResponse: ((HTTPResponse) -> Void)?, consumeData: @escaping (Data, Double?) -> Void, completion: @escaping (HTTPResult<HTTPResponse>) -> Void) -> Cancellable {
+    public func progressiveDownload(_ request: URLRequestConvertible, range: Range<UInt64>?, userInfo: [AnyHashable: Any]?, receiveResponse: ((HTTPResponse) -> ())?, consumeData: @escaping (Data, Double?) -> (), completion: @escaping (HTTPResult<HTTPResponse>) -> ()) -> Cancellable {
         var request = request.urlRequest
         if let range = range {
             request.setBytesRange(range)
         }
 
         return startRequest(request,
+            userInfo: userInfo,
             makeTask: { request, completion in
                 ProgressiveDownloadTask(
                     client: self,
                     task: self.session.dataTask(with: request),
+                    userInfo: userInfo,
                     isByteRangeRequest: range != nil,
                     receiveResponse: receiveResponse,
                     consumeData: consumeData,
@@ -151,6 +155,7 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
     /// Prepares and start a new HTTP request, using the given `Task` factory.
     private func startRequest<T>(
         _ request: URLRequestConvertible,
+        userInfo: [AnyHashable: Any]?,
         makeTask: @escaping (_ request: URLRequest, _ completion: @escaping (HTTPResult<T>) -> Void) -> Task,
         completion: @escaping (HTTPResult<T>) -> Void
     ) -> Cancellable {
@@ -162,14 +167,14 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
         func tryStart(_ request: URLRequestConvertible) -> HTTPDeferred<T> {
             let request = request.urlRequest
 
-            return willStartRequest(request)
+            return willStartRequest(request, userInfo: userInfo)
                 .flatMap(requireNotCancelled)
                 .flatMap { request in
                     let request = request.urlRequest
 
                     return startTask(for: request)
                         .flatCatch { error in
-                            recoverRequest(request, fromError: error)
+                            recoverRequest(request, userInfo: userInfo, fromError: error)
                                 .flatMap(requireNotCancelled)
                                 .flatMap { newRequest in
                                     tryStart(newRequest)
@@ -200,10 +205,10 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
         }
 
         /// Lets the `delegate` customize the `request` if needed, before actually starting it.
-        func willStartRequest(_ request: URLRequest) -> HTTPDeferred<URLRequestConvertible> {
+        func willStartRequest(_ request: URLRequest, userInfo: [AnyHashable: Any]?) -> HTTPDeferred<URLRequestConvertible> {
             deferred { completion in
                 if let delegate = self.delegate {
-                    delegate.httpClient(self, willStartRequest: request) { completion(CancellableResult($0)) }
+                    delegate.httpClient(self, willStartRequest: request, userInfo: userInfo) { completion(CancellableResult($0)) }
                 } else {
                     completion(.success(request))
                 }
@@ -211,10 +216,10 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
         }
 
         /// Attempts to recover from a `error` by asking the `delegate` for a new request.
-        func recoverRequest(_ request: URLRequest, fromError error: HTTPError) -> HTTPDeferred<URLRequestConvertible> {
+        func recoverRequest(_ request: URLRequest, userInfo: [AnyHashable: Any]?, fromError error: HTTPError) -> HTTPDeferred<URLRequestConvertible> {
             deferred { completion in
                 if let delegate = self.delegate {
-                    delegate.httpClient(self, recoverRequest: request, fromError: error) { completion(CancellableResult($0)) }
+                    delegate.httpClient(self, recoverRequest: request, userInfo: userInfo, fromError: error) { completion(CancellableResult($0)) }
                 } else {
                     completion(.failure(error))
                 }
@@ -296,12 +301,14 @@ private class BaseTask<T>: Task, Loggable {
 
     weak var client: DefaultHTTPClient?
     let task: URLSessionTask
+    let userInfo: [AnyHashable: Any]?
     private(set) var isFinished = false
     private let completion: (HTTPResult<T>) -> Void
 
-    init(client: DefaultHTTPClient?, task: URLSessionTask, completion: @escaping (HTTPResult<T>) -> Void) {
+    init(client: DefaultHTTPClient?, task: URLSessionTask, userInfo: [AnyHashable: Any]?, completion: @escaping (HTTPResult<T>) -> Void) {
         self.client = client
         self.task = task
+        self.userInfo = userInfo
         self.completion = completion
     }
 
@@ -327,7 +334,7 @@ private class BaseTask<T>: Task, Loggable {
             log(.error, "\(Self.title) failed for: \(task.originalRequest?.url?.absoluteString ?? "N/A") with error: \(error.localizedDescription)")
 
             if let client = client, let request = task.originalRequest {
-                client.delegate?.httpClient(client, request: request, didFailWithError: error)
+                client.delegate?.httpClient(client, request: request, userInfo: userInfo, didFailWithError: error)
             }
         }
 
@@ -336,7 +343,7 @@ private class BaseTask<T>: Task, Loggable {
 
     func didReceiveResponse(_ response: HTTPResponse) {
         if let client = client, let request = task.originalRequest {
-            client.delegate?.httpClient(client, request: request, didReceiveResponse: response)
+            client.delegate?.httpClient(client, request: request, userInfo: userInfo, didReceiveResponse: response)
         }
     }
 
@@ -449,12 +456,12 @@ private final class ProgressiveDownloadTask: BaseTask<HTTPResponse> {
     private let receiveResponse: ((HTTPResponse) -> Void)?
     private let consumeData: (Data, Double?) -> Void
 
-    init(client: DefaultHTTPClient?, task: URLSessionDataTask, isByteRangeRequest: Bool, receiveResponse: ((HTTPResponse) -> Void)?, consumeData: @escaping (Data, Double?) -> Void, completion: @escaping (HTTPResult<HTTPResponse>) -> Void) {
+    init(client: DefaultHTTPClient?, task: URLSessionDataTask, userInfo: [AnyHashable: Any]?, isByteRangeRequest: Bool, receiveResponse: ((HTTPResponse) -> Void)?, consumeData: @escaping (Data, Double?) -> Void, completion: @escaping (HTTPResult<HTTPResponse>) -> Void) {
         self.isByteRangeRequest = isByteRangeRequest
         self.receiveResponse = receiveResponse
         self.consumeData = consumeData
 
-        super.init(client: client, task: task, completion: completion)
+        super.init(client: client, task: task, userInfo: userInfo, completion: completion)
     }
 
     override func urlSession(_ session: URLSession, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> ()) {
