@@ -76,8 +76,6 @@
 		CA3386EE24056ADB00FDCBBA /* Locator+HTML.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA3386ED24056ADB00FDCBBA /* Locator+HTML.swift */; };
 		CA3386F024056E7A00FDCBBA /* Locator+HTMLTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA3386EF24056E7A00FDCBBA /* Locator+HTMLTests.swift */; };
 		CA40C07A21FF25F80069A50E /* JSON.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA40C07921FF25F80069A50E /* JSON.swift */; };
-		CA4CF46125CD9FC1005DD935 /* Minizip.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = CA4CF45F25CD9FC1005DD935 /* Minizip.xcframework */; };
-		CA4CF46225CD9FC1005DD935 /* Fuzi.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = CA4CF46025CD9FC1005DD935 /* Fuzi.xcframework */; };
 		CA4CF46625CDA02B005DD935 /* Fuzi.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = CA4CF46025CD9FC1005DD935 /* Fuzi.xcframework */; };
 		CA4CF46725CDA02B005DD935 /* Minizip.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = CA4CF45F25CD9FC1005DD935 /* Minizip.xcframework */; };
 		CA50B86E22B2A1CF003AFF24 /* R2LocalizedString.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA50B86D22B2A1CF003AFF24 /* R2LocalizedString.swift */; };
@@ -123,6 +121,8 @@
 		CA7116F12455FAF900C029FD /* UTI.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA7116F02455FAF900C029FD /* UTI.swift */; };
 		CA7B1AA5248A2CFF00152F73 /* URITemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA7B1AA4248A2CFF00152F73 /* URITemplate.swift */; };
 		CA7B1AA7248A2D1200152F73 /* URITemplateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA7B1AA6248A2D1200152F73 /* URITemplateTests.swift */; };
+		CA7B7798263AB83F00260838 /* Fuzi.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CA7B7797263AB83F00260838 /* Fuzi.framework */; };
+		CA7B779C263AB84300260838 /* Minizip.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CA7B779B263AB84300260838 /* Minizip.framework */; };
 		CA81741C24585E6700033776 /* NowPlayingInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA81741B24585E6700033776 /* NowPlayingInfo.swift */; };
 		CA86728E24485BE70035FDF4 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CA86728D24485BE70035FDF4 /* CoreServices.framework */; };
 		CA8C84142468906600CE97A4 /* Fetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA8C84132468906600CE97A4 /* Fetcher.swift */; };
@@ -329,6 +329,8 @@
 		CA7116F02455FAF900C029FD /* UTI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UTI.swift; sourceTree = "<group>"; };
 		CA7B1AA4248A2CFF00152F73 /* URITemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URITemplate.swift; sourceTree = "<group>"; };
 		CA7B1AA6248A2D1200152F73 /* URITemplateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URITemplateTests.swift; sourceTree = "<group>"; };
+		CA7B7797263AB83F00260838 /* Fuzi.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = Fuzi.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		CA7B779B263AB84300260838 /* Minizip.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = Minizip.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		CA81741B24585E6700033776 /* NowPlayingInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingInfo.swift; sourceTree = "<group>"; };
 		CA86728D24485BE70035FDF4 /* CoreServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreServices.framework; path = System/Library/Frameworks/CoreServices.framework; sourceTree = SDKROOT; };
 		CA8C84132468906600CE97A4 /* Fetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Fetcher.swift; sourceTree = "<group>"; };
@@ -413,9 +415,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CA7B7798263AB83F00260838 /* Fuzi.framework in Frameworks */,
 				CA86728E24485BE70035FDF4 /* CoreServices.framework in Frameworks */,
-				CA4CF46125CD9FC1005DD935 /* Minizip.xcframework in Frameworks */,
-				CA4CF46225CD9FC1005DD935 /* Fuzi.xcframework in Frameworks */,
+				CA7B779C263AB84300260838 /* Minizip.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1020,6 +1022,8 @@
 		F3E7D41F1F4ECA9800DF166D /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				CA7B779B263AB84300260838 /* Minizip.framework */,
+				CA7B7797263AB83F00260838 /* Fuzi.framework */,
 				CA4CF46025CD9FC1005DD935 /* Fuzi.xcframework */,
 				CA4CF45F25CD9FC1005DD935 /* Minizip.xcframework */,
 				CA252DDA2447A3810005067C /* Minizip.framework */,
