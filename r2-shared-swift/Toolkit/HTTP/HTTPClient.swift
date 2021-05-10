@@ -16,8 +16,7 @@ public protocol HTTPClient: Loggable {
     ///
     /// - Parameters:
     ///   - request: Request to the resource to fetch.
-    ///   - userInfo: Additional context data specific to a given implementation of `HTTPClient`.
-    func fetch(_ request: URLRequestConvertible, userInfo: [AnyHashable: Any]?, completion: @escaping (HTTPResult<HTTPResponse>) -> Void) -> Cancellable
+    func fetch(_ request: HTTPRequestConvertible, completion: @escaping (HTTPResult<HTTPResponse>) -> Void) -> Cancellable
 
     /// Downloads a resource progressively.
     ///
@@ -26,7 +25,6 @@ public protocol HTTPClient: Loggable {
     /// - Parameters:
     ///   - request: Request to the downloaded resource.
     ///   - range: If provided, issue a byte range request.
-    ///   - userInfo: Additional context data specific to a given implementation of `HTTPClient`.
     ///   - receiveResponse: Callback called when receiving the initial response, before consuming its body. You can
     ///     also access it in the completion block after consuming the data.
     ///   - consumeData: Callback called for each chunk of data received. Callers are responsible to accumulate the data
@@ -34,9 +32,8 @@ public protocol HTTPClient: Loggable {
     ///   - completion: Callback called when the download finishes or an error occurs.
     /// - Returns: A `Cancellable` interrupting the download when requested.
     func progressiveDownload(
-        _ request: URLRequestConvertible,
+        _ request: HTTPRequestConvertible,
         range: Range<UInt64>?,
-        userInfo: [AnyHashable: Any]?,
         receiveResponse: ((HTTPResponse) -> Void)?,
         consumeData: @escaping (_ chunk: Data, _ progress: Double?) -> Void,
         completion: @escaping (HTTPResult<HTTPResponse>) -> Void
@@ -46,30 +43,15 @@ public protocol HTTPClient: Loggable {
 
 public extension HTTPClient {
 
-    func fetch(_ request: URLRequestConvertible, completion: @escaping (HTTPResult<HTTPResponse>) -> Void) -> Cancellable {
-        fetch(request, userInfo: nil, completion: completion)
-    }
-
-    func progressiveDownload(
-        _ request: URLRequestConvertible,
-        range: Range<UInt64>?,
-        receiveResponse: ((HTTPResponse) -> Void)?,
-        consumeData: @escaping (_ chunk: Data, _ progress: Double?) -> Void,
-        completion: @escaping (HTTPResult<HTTPResponse>) -> Void
-    ) -> Cancellable {
-        progressiveDownload(request, range: range, userInfo: nil, receiveResponse: receiveResponse, consumeData: consumeData, completion: completion)
-    }
-
     /// Fetches the resource and attempts to decode it with the given `decoder`.
     ///
     /// If the decoder fails, a `malformedResponse` HTTP error is returned.
     func fetch<T>(
-        _ request: URLRequestConvertible,
-        userInfo: [AnyHashable: Any]? = nil,
+        _ request: HTTPRequestConvertible,
         decoder: @escaping (HTTPResponse, Data) throws -> T?,
         completion: @escaping (HTTPResult<T>) -> Void
     ) -> Cancellable {
-        fetch(request, userInfo: userInfo) { response in
+        fetch(request) { response in
             let result = response.flatMap { response -> HTTPResult<T> in
                 guard let body = response.body, let result = try? decoder(response, body) else {
                     return .failure(HTTPError(kind: .malformedResponse))
@@ -81,18 +63,16 @@ public extension HTTPClient {
     }
 
     /// Fetches the resource as a JSON object.
-    func fetchJSON(_ request: URLRequestConvertible, userInfo: [AnyHashable: Any]? = nil, completion: @escaping (HTTPResult<[String: Any]>) -> Void) -> Cancellable {
+    func fetchJSON(_ request: HTTPRequestConvertible, completion: @escaping (HTTPResult<[String: Any]>) -> Void) -> Cancellable {
         fetch(request,
-            userInfo: userInfo,
             decoder: { try JSONSerialization.jsonObject(with: $1) as? [String: Any] },
             completion: completion
         )
     }
 
     /// Fetches the resource as a `String`.
-    func fetchString(_ request: URLRequestConvertible, userInfo: [AnyHashable: Any]? = nil, completion: @escaping (HTTPResult<String>) -> Void) -> Cancellable {
+    func fetchString(_ request: HTTPRequestConvertible, completion: @escaping (HTTPResult<String>) -> Void) -> Cancellable {
         fetch(request,
-            userInfo: userInfo,
             decoder: { response, body in
                 let encoding = response.mediaType.encoding ?? .utf8
                 return String(data: body, encoding: encoding)
@@ -102,22 +82,21 @@ public extension HTTPClient {
     }
 
     /// Fetches the resource as an `UIImage`.
-    func fetchImage(_ request: URLRequestConvertible, userInfo: [AnyHashable: Any]? = nil, completion: @escaping (HTTPResult<UIImage>) -> Void) -> Cancellable {
+    func fetchImage(_ request: HTTPRequestConvertible, completion: @escaping (HTTPResult<UIImage>) -> Void) -> Cancellable {
         fetch(request,
-            userInfo: userInfo,
             decoder: { UIImage(data: $1) },
             completion: completion
         )
     }
 
     /// Fetches a resource synchronously.
-    func synchronousFetch(_ request: URLRequestConvertible, userInfo: [AnyHashable: Any]? = nil) -> HTTPResult<HTTPResponse> {
+    func synchronousFetch(_ request: HTTPRequestConvertible) -> HTTPResult<HTTPResponse> {
         warnIfMainThread()
 
         var result: HTTPResult<HTTPResponse>!
 
         let semaphore = DispatchSemaphore(value: 0)
-        _ = fetch(request, userInfo: userInfo) {
+        _ = fetch(request) {
             result = $0
             semaphore.signal()
         }

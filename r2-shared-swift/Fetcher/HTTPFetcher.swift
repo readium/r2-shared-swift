@@ -65,10 +65,7 @@ public final class HTTPFetcher: Fetcher, Loggable {
 
         /// Cached HEAD response to get the expected content length and other metadata.
         private lazy var headResponse: ResourceResult<HTTPResponse> = {
-            var request = URLRequest(url: url)
-            request.httpMethod = "HEAD"
-
-            return client.synchronousFetch(request)
+            return client.synchronousFetch(HTTPRequest(url: url, method: .head))
                 .mapError { ResourceError.wrap($0) }
         }()
 

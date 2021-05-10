@@ -14,7 +14,7 @@ public struct HTTPError: LocalizedError, Equatable, Loggable {
 
     public enum Kind: Equatable {
         /// The provided request was not valid.
-        case malformedRequest
+        case malformedRequest(url: String?)
         /// The received response couldn't be decoded.
         case malformedResponse
         /// The client, server or gateways timed out.

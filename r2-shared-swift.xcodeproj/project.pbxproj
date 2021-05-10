@@ -14,6 +14,7 @@
 		3ED94588C74689AF63D0B13E /* MediaType+Deprecated.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ED945189CDA6315454B66A3 /* MediaType+Deprecated.swift */; };
 		3ED945A0DC573E0A631BE9CA /* BufferedResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ED946C593463CDA73661EEE /* BufferedResource.swift */; };
 		3ED9461016FE3D038159215B /* MediaTypeSnifferContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ED9440B6F078846EA92DB02 /* MediaTypeSnifferContext.swift */; };
+		3ED947D12CDC58AC97A65F0A /* HTTPRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ED94338BE7DC5CB4239B425 /* HTTPRequest.swift */; };
 		3ED947E4B657163DB35B4874 /* MediaType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ED943C9821500DFBB7F13EE /* MediaType.swift */; };
 		3ED94848B32DF039C951C7E4 /* Collection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ED942B2BBE9224BBDB9CDEE /* Collection.swift */; };
 		3ED948EA4CA3AC044791A128 /* MediaTypeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ED944F337D9B6CFC6CD33EA /* MediaTypeTests.swift */; };
@@ -138,7 +139,6 @@
 		CA9EA45E25F137EB004E5F93 /* HTTPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9EA45D25F137EB004E5F93 /* HTTPClient.swift */; };
 		CA9EA46225F13801004E5F93 /* HTTPError.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9EA46125F13801004E5F93 /* HTTPError.swift */; };
 		CA9EA46525F13823004E5F93 /* HTTPProblemDetails.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9EA46425F13823004E5F93 /* HTTPProblemDetails.swift */; };
-		CA9EA46825F1383E004E5F93 /* URLRequestConvertible.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9EA46725F1383E004E5F93 /* URLRequestConvertible.swift */; };
 		CA9EA46D25F138DF004E5F93 /* DefaultHTTPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9EA46C25F138DF004E5F93 /* DefaultHTTPClient.swift */; };
 		CA9EA47425F13906004E5F93 /* HTTPProblemDetailsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9EA47325F13906004E5F93 /* HTTPProblemDetailsTests.swift */; };
 		CA9FC06F24824C3B0020B9CC /* Manifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA9FC06E24824C3B0020B9CC /* Manifest.swift */; };
@@ -221,6 +221,7 @@
 		3ED9404DDFEB701146894979 /* MediaTypeSnifferTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MediaTypeSnifferTests.swift; sourceTree = "<group>"; };
 		3ED941F913B58D61AE98A6CC /* UInt64.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UInt64.swift; sourceTree = "<group>"; };
 		3ED942B2BBE9224BBDB9CDEE /* Collection.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Collection.swift; sourceTree = "<group>"; };
+		3ED94338BE7DC5CB4239B425 /* HTTPRequest.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HTTPRequest.swift; sourceTree = "<group>"; };
 		3ED943C9821500DFBB7F13EE /* MediaType.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MediaType.swift; sourceTree = "<group>"; };
 		3ED9440B6F078846EA92DB02 /* MediaTypeSnifferContext.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MediaTypeSnifferContext.swift; sourceTree = "<group>"; };
 		3ED944F337D9B6CFC6CD33EA /* MediaTypeTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MediaTypeTests.swift; sourceTree = "<group>"; };
@@ -351,7 +352,6 @@
 		CA9EA45D25F137EB004E5F93 /* HTTPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPClient.swift; sourceTree = "<group>"; };
 		CA9EA46125F13801004E5F93 /* HTTPError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPError.swift; sourceTree = "<group>"; };
 		CA9EA46425F13823004E5F93 /* HTTPProblemDetails.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPProblemDetails.swift; sourceTree = "<group>"; };
-		CA9EA46725F1383E004E5F93 /* URLRequestConvertible.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLRequestConvertible.swift; sourceTree = "<group>"; };
 		CA9EA46C25F138DF004E5F93 /* DefaultHTTPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultHTTPClient.swift; sourceTree = "<group>"; };
 		CA9EA47325F13906004E5F93 /* HTTPProblemDetailsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPProblemDetailsTests.swift; sourceTree = "<group>"; };
 		CA9FC06E24824C3B0020B9CC /* Manifest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Manifest.swift; sourceTree = "<group>"; };
@@ -881,10 +881,10 @@
 			isa = PBXGroup;
 			children = (
 				CA9EA45D25F137EB004E5F93 /* HTTPClient.swift */,
+				3ED94338BE7DC5CB4239B425 /* HTTPRequest.swift */,
 				CA9EA46125F13801004E5F93 /* HTTPError.swift */,
 				CA9EA46425F13823004E5F93 /* HTTPProblemDetails.swift */,
 				CA9EA46C25F138DF004E5F93 /* DefaultHTTPClient.swift */,
-				CA9EA46725F1383E004E5F93 /* URLRequestConvertible.swift */,
 			);
 			path = HTTP;
 			sourceTree = "<group>";
@@ -1258,7 +1258,6 @@
 				CA62B37824E02EF00046CDCF /* ProxyResource.swift in Sources */,
 				CA62B36E24DFE64D0046CDCF /* ContentProtectionService+WS.swift in Sources */,
 				CAD1EE70245AC29B00C1E684 /* String.swift in Sources */,
-				CA9EA46825F1383E004E5F93 /* URLRequestConvertible.swift in Sources */,
 				CA94291622BCD08C00305CDB /* ResourcesServer.swift in Sources */,
 				CA16A8702232F7CD00E66255 /* Link.swift in Sources */,
 				CACDE6002485166B006FEB1B /* PerResourcePositionsService.swift in Sources */,
@@ -1350,6 +1349,7 @@
 				3ED945A0DC573E0A631BE9CA /* BufferedResource.swift in Sources */,
 				3ED942E5B5E4E04950D8FB17 /* UInt64.swift in Sources */,
 				3ED94848B32DF039C951C7E4 /* Collection.swift in Sources */,
+				3ED947D12CDC58AC97A65F0A /* HTTPRequest.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
