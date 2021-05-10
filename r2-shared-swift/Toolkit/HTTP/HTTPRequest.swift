@@ -6,7 +6,7 @@
 
 import Foundation
 
-/// Holds the information about an HTTP request performed by an [HTTPClient].
+/// Holds the information about an HTTP request performed by an `HTTPClient`.
 public struct HTTPRequest: Equatable {
 
     /// Address of the remote resource to request.
@@ -20,6 +20,7 @@ public struct HTTPRequest: Equatable {
         case delete = "DELETE"
         case get = "GET"
         case head = "HEAD"
+        case options = "OPTIONS"
         case patch = "PATCH"
         case post = "POST"
         case put = "PUT"

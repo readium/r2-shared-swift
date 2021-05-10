@@ -121,7 +121,7 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
         /// Will try to recover from errors using the `delegate` and calling itself again.
         func tryStart(_ request: HTTPRequestConvertible) -> HTTPDeferred<HTTPResponse> {
             request.httpRequest().deferred
-                .flatMap { willStartRequest($0) }
+                .flatMap(willStartRequest)
                 .flatMap(requireNotCancelled)
                 .flatMap { request in
                     return startTask(for: request)
@@ -273,7 +273,7 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
             case stream(HTTPResponse, readBytes: Int64)
             /// We received an error response, the data will be accumulated in `response.body` to make the final
             /// `HTTPError`. The body is needed for example when the response is an OPDS Authentication Document.
-            case failure(kind: HTTPError.Kind, cause: Error?, response: HTTPResponse)
+            case failure(kind: HTTPError.Kind, cause: Error?, response: HTTPResponse?)
             /// The request is terminated.
             case finished
         }
@@ -341,7 +341,6 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
                     session.dataTask(with: request.urlRequest) { data, _, error in
                         response.body = data
                         self.state = .failure(kind: kind, cause: error, response: response)
-                        self.finish()
                         completionHandler(.cancel)
                     }.resume()
                     return
@@ -351,7 +350,6 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
                 guard !request.hasHeader("Range") || response.acceptsByteRanges else {
                     log(.error, "Streaming ranges requires the remote HTTP server to support byte range requests: \(url)")
                     state = .failure(kind: .other, cause: TaskError.byteRangesNotSupported(url: url), response: response)
-                    finish()
                     completionHandler(.cancel)
                     return
                 }
@@ -379,16 +377,20 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
                 state = .stream(response, readBytes: readBytes)
 
             case .failure(let kind, let cause, var response):
-                var body = response.body ?? Data()
+                var body = response?.body ?? Data()
                 body.append(data)
-                response.body = body
+                response?.body = body
                 state = .failure(kind: kind, cause: cause, response: response)
             }
         }
 
         func urlSession(_ session: URLSession, didCompleteWithError error: Error?) {
-            if case .failure(_, _, let response) = state, let error = error {
-                state = .failure(kind: HTTPError.Kind(error: error), cause: error, response: response)
+            if let error = error {
+                if case .failure = state {
+                    // No-op, we don't want to overwrite the failure state in this case.
+                } else {
+                    state = .failure(kind: HTTPError.Kind(error: error), cause: error, response: nil)
+                }
             }
             finish()
         }

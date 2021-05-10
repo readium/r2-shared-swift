@@ -180,9 +180,9 @@ public enum ResourceError: LocalizedError {
             case .timeout, .offline:
                 return .unavailable(error)
             case .unauthorized, .forbidden:
-                return .forbidden(nil)
+                return .forbidden(error)
             case .notFound:
-                return .notFound(nil)
+                return .notFound(error)
             case .cancelled:
                 return .cancelled
             case .malformedResponse, .clientError, .serverError, .other:

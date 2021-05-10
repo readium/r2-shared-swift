@@ -9,11 +9,6 @@ import Foundation
 /// Fetches remote resources with HTTP.
 public final class HTTPFetcher: Fetcher, Loggable {
     
-    enum HTTPError: Error {
-        case invalidURL(String)
-        case serverFailure
-    }
-
     /// HTTP client used to perform HTTP requests.
     private let client: HTTPClient
     /// Base URL from which relative HREF are served.
@@ -32,7 +27,7 @@ public final class HTTPFetcher: Fetcher, Loggable {
             url.isHTTP
         else {
             log(.error, "Not a valid HTTP URL: \(link.href)")
-            return FailureResource(link: link, error: .badRequest(HTTPError.invalidURL(link.href)))
+            return FailureResource(link: link, error: .badRequest(HTTPError(kind: .malformedRequest(url: link.href))))
         }
         return HTTPResource(client: client, link: link, url: url)
     }
