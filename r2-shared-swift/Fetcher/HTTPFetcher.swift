@@ -65,18 +65,22 @@ public final class HTTPFetcher: Fetcher, Loggable {
 
         /// Cached HEAD response to get the expected content length and other metadata.
         private lazy var headResponse: ResourceResult<HTTPResponse> = {
-            return client.synchronousFetch(HTTPRequest(url: url, method: .head))
+            return client.fetchSync(HTTPRequest(url: url, method: .head))
                 .mapError { ResourceError.wrap($0) }
         }()
 
         /// An HTTP resource is always remote.
         var file: URL? { nil }
 
-        func read(range: Range<UInt64>?, consume: @escaping (Data) -> (), completion: @escaping (ResourceResult<()>) -> ()) -> Cancellable {
-            client.progressiveDownload(url,
-                range: range,
+        func stream(range: Range<UInt64>?, consume: @escaping (Data) -> (), completion: @escaping (ResourceResult<()>) -> ()) -> Cancellable {
+            var request = HTTPRequest(url: url)
+            if let range = range {
+                request.setRange(range)
+            }
+
+            return client.stream(request,
                 receiveResponse: nil,
-                consumeData: { data, _ in consume(data) },
+                consume: { data, _ in consume(data) },
                 completion: { result in
                     completion(result.map { _ in }.mapError { ResourceError.wrap($0) })
                 }

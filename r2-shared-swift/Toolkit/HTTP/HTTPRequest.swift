@@ -7,7 +7,7 @@
 import Foundation
 
 /// Holds the information about an HTTP request performed by an [HTTPClient].
-public struct HTTPRequest {
+public struct HTTPRequest: Equatable {
 
     /// Address of the remote resource to request.
     public var url: URL
@@ -16,7 +16,7 @@ public struct HTTPRequest {
     public var method: Method = .get
 
     /// Supported HTTP methods.
-    public enum Method: String {
+    public enum Method: String, Equatable {
         case delete = "DELETE"
         case get = "GET"
         case head = "HEAD"
@@ -32,7 +32,7 @@ public struct HTTPRequest {
     public var body: Body? = nil
 
     /// Supported body values.
-    public enum Body {
+    public enum Body: Equatable {
         case data(Data)
         case file(URL)
     }
@@ -44,7 +44,7 @@ public struct HTTPRequest {
     public var allowUserInteraction: Bool = false
 
     /// Additional context data specific to a given implementation of `HTTPClient`.
-    public var userInfo: [AnyHashable: Any] = [:]
+    public var userInfo: [AnyHashable: AnyHashable] = [:]
 
     /// Issue a byte range request. Use -1 to download until the end.
     public mutating func setRange(_ range: Range<UInt64>) {
@@ -54,6 +54,12 @@ public struct HTTPRequest {
             value += "\(range.upperBound)"
         }
         headers["Range"] = "bytes=\(value)"
+    }
+
+    /// Returns whether this request has the HTTP header with the given `key`, without taking into account the case.
+    public func hasHeader(_ name: String) -> Bool {
+        let name = name.lowercased()
+        return headers.contains { n, _ in n.lowercased() == name }
     }
 }
 
@@ -75,6 +81,12 @@ public enum HTTPRequestError: Error {
 extension HTTPRequest: HTTPRequestConvertible {
     public func httpRequest() -> HTTPResult<HTTPRequest> {
         .success(self)
+    }
+}
+
+extension Result: HTTPRequestConvertible where Success == HTTPRequest, Failure == HTTPError {
+    public func httpRequest() -> HTTPResult<HTTPRequest> {
+        self
     }
 }
 

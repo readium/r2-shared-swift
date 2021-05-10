@@ -61,6 +61,37 @@ public struct HTTPError: LocalizedError, Equatable, Loggable {
                 self = .malformedResponse
             }
         }
+
+        /// Creates a `Kind` from a native `URLError` or another error.
+        public init(error: Error) {
+            switch error {
+            case let error as HTTPError:
+                self = error.kind
+            case let error as URLError:
+                switch error.code {
+                case .badURL, .unsupportedURL:
+                    self = .badRequest
+                case .httpTooManyRedirects, .redirectToNonExistentLocation, .badServerResponse, .secureConnectionFailed:
+                    self = .serverError
+                case .zeroByteResource, .cannotDecodeContentData, .cannotDecodeRawData, .dataLengthExceedsMaximum:
+                    self = .malformedResponse
+                case .notConnectedToInternet, .networkConnectionLost:
+                    self = .offline
+                case .timedOut:
+                    self = .timeout
+                case .userAuthenticationRequired, .appTransportSecurityRequiresSecureConnection, .noPermissionsToReadFile:
+                    self = .forbidden
+                case .fileDoesNotExist:
+                    self = .notFound
+                case .cancelled, .userCancelledAuthentication:
+                    self = .cancelled
+                default:
+                    self = .other
+                }
+            default:
+                self = .other
+            }
+        }
     }
 
     /// Category of HTTP error.
@@ -106,34 +137,7 @@ public struct HTTPError: LocalizedError, Equatable, Loggable {
             return
         }
 
-        self.init(
-            kind: {
-                if let error = error as? URLError {
-                    switch error.code {
-                    case .badURL, .unsupportedURL:
-                        return .badRequest
-                    case .httpTooManyRedirects, .redirectToNonExistentLocation, .badServerResponse, .secureConnectionFailed:
-                        return .serverError
-                    case .zeroByteResource, .cannotDecodeContentData, .cannotDecodeRawData, .dataLengthExceedsMaximum:
-                        return .malformedResponse
-                    case .notConnectedToInternet, .networkConnectionLost:
-                        return .offline
-                    case .timedOut:
-                        return .timeout
-                    case .userAuthenticationRequired, .appTransportSecurityRequiresSecureConnection, .noPermissionsToReadFile:
-                        return .forbidden
-                    case .fileDoesNotExist:
-                        return .notFound
-                    case .cancelled, .userCancelledAuthentication:
-                        return .cancelled
-                    default:
-                        break
-                    }
-                }
-                return .other
-            }(),
-            cause: error
-        )
+        self.init(kind: Kind(error: error), cause: error)
     }
 
     public var errorDescription: String? {

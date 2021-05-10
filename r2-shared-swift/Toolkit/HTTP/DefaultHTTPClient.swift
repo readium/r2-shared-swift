@@ -66,8 +66,8 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
     /// Creates a `DefaultHTTPClient` with common configuration settings.
     ///
     /// - Parameters:
-    ///   - ephemeral: When true, uses no persistent storage for caches, cookies, or credentials.
     ///   - cachePolicy: Determines the request caching policy used by HTTP tasks.
+    ///   - ephemeral: When true, uses no persistent storage for caches, cookies, or credentials.
     ///   - additionalHeaders: A dictionary of additional headers to send with requests. For example, `User-Agent`.
     ///   - requestTimeout: The timeout interval to use when waiting for additional data.
     ///   - resourceTimeout: The maximum amount of time that a resource request should be allowed to take.
@@ -114,64 +114,12 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
         session.invalidateAndCancel()
     }
 
-    public func fetch(_ request: HTTPRequestConvertible, completion: @escaping (HTTPResult<HTTPResponse>) -> ()) -> Cancellable {
-        return startRequest(request,
-            makeTask: { request, completion in
-                FetchTask(
-                    client: self,
-                    request: request,
-                    task: self.session.dataTask(with: request.urlRequest),
-                    completion: completion
-                )
-            },
-            completion: completion
-        )
-    }
-
-    public func progressiveDownload(_ requestConvertible: HTTPRequestConvertible, range: Range<UInt64>?, receiveResponse: ((HTTPResponse) -> ())?, consumeData: @escaping (Data, Double?) -> (), completion: @escaping (HTTPResult<HTTPResponse>) -> ()) -> Cancellable {
-        let request = requestConvertible.httpRequest()
-
-        switch request {
-        case .success(var request):
-            if let range = range {
-                request.setRange(range)
-            }
-
-            return startRequest(request,
-                makeTask: { request, completion in
-                    ProgressiveDownloadTask(
-                        client: self,
-                        request: request,
-                        task: self.session.dataTask(with: request.urlRequest),
-                        isByteRangeRequest: range != nil,
-                        receiveResponse: receiveResponse,
-                        consumeData: consumeData,
-                        completion: completion
-                    )
-                },
-                completion: completion
-            )
-
-        case .failure(let error):
-            DispatchQueue.main.async {
-                completion(.failure(error))
-            }
-            return CancellableObject()
-        }
-    }
-
-    /// Prepares and start a new HTTP request, using the given `Task` factory.
-    private func startRequest<T>(
-        _ request: HTTPRequestConvertible,
-        makeTask: @escaping (_ request: HTTPRequest, _ completion: @escaping (HTTPResult<T>) -> Void) -> Task,
-        completion: @escaping (HTTPResult<T>) -> Void
-    ) -> Cancellable {
-
+    public func stream(_ request: HTTPRequestConvertible, receiveResponse: ((HTTPResponse) -> ())?, consume: @escaping (Data, Double?) -> (), completion: @escaping (HTTPResult<HTTPResponse>) -> ()) -> Cancellable {
         let mediator = MediatorCancellable()
 
         /// Attempts to start a `request`.
         /// Will try to recover from errors using the `delegate` and calling itself again.
-        func tryStart(_ request: HTTPRequestConvertible) -> HTTPDeferred<T> {
+        func tryStart(_ request: HTTPRequestConvertible) -> HTTPDeferred<HTTPResponse> {
             request.httpRequest().deferred
                 .flatMap { willStartRequest($0) }
                 .flatMap(requireNotCancelled)
@@ -197,13 +145,26 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
         }
 
         /// Creates and starts a new task for the `request`, whose cancellable will be exposed through `mediator`.
-        func startTask(for request: HTTPRequest) -> HTTPDeferred<T> {
+        func startTask(for request: HTTPRequest) -> HTTPDeferred<HTTPResponse> {
             deferred { completion in
-                let task = makeTask(request) { result in
-                    completion(CancellableResult(result))
-                }
+                let cancellable = self.start(Task(
+                    request: request,
+                    task: self.session.dataTask(with: request.urlRequest),
+                    receiveResponse: { [weak self] response in
+                        if let self = self {
+                            self.delegate?.httpClient(self, request: request, didReceiveResponse: response)
+                        }
+                        receiveResponse?(response)
+                    },
+                    consume: consume,
+                    completion: { [weak self] result in
+                        if let self = self, case .failure(let error) = result {
+                            self.delegate?.httpClient(self, request: request, didFailWithError: error)
+                        }
+                        completion(CancellableResult(result))
+                    }
+                ))
 
-                let cancellable = self.start(task)
                 mediator.mediate(cancellable)
             }
         }
@@ -288,272 +249,151 @@ public final class DefaultHTTPClient: NSObject, HTTPClient, Loggable, URLSession
         tasks[i].urlSession(session, didCompleteWithError: error)
     }
 
-}
 
-/// Represents an on-going HTTP task.
-private protocol Task: Cancellable {
-    var task: URLSessionTask { get }
+    /// Represents an on-going HTTP task.
+    private class Task: Cancellable, Loggable {
 
-    func start()
-    func urlSession(_ session: URLSession, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> ())
-    func urlSession(_ session: URLSession, didReceive data: Data)
-    func urlSession(_ session: URLSession, didCompleteWithError error: Error?)
-}
-
-private class BaseTask<T>: Task, Loggable {
-
-    class var title: String {
-        fatalError("To override in subclasses")
-    }
-
-    weak var client: DefaultHTTPClient?
-    let request: HTTPRequest
-    let task: URLSessionTask
-    private(set) var isFinished = false
-    private let completion: (HTTPResult<T>) -> Void
-
-    init(client: DefaultHTTPClient?, request: HTTPRequest, task: URLSessionTask, completion: @escaping (HTTPResult<T>) -> Void) {
-        self.client = client
-        self.request = request
-        self.task = task
-        self.completion = completion
-    }
-
-    func start() {
-        self.log(.info, "\(Self.title) \(request)")
-
-        task.resume()
-    }
-
-    func cancel() {
-        task.cancel()
-    }
-
-    func finish(with result: HTTPResult<T>) {
-        guard !isFinished else {
-            return
+        enum TaskError: Error {
+            case byteRangesNotSupported(url: URL)
         }
-        isFinished = true
 
-        if case .failure(let error) = result, error.kind != .cancelled {
-            log(.error, "\(Self.title) failed for: \(request.url) with error: \(error.localizedDescription)")
+        private let request: HTTPRequest
+        fileprivate let task: URLSessionTask
+        private let receiveResponse: ((HTTPResponse) -> Void)
+        private let consume: (Data, Double?) -> Void
+        private let completion: (HTTPResult<HTTPResponse>) -> Void
 
-            if let client = client {
-                client.delegate?.httpClient(client, request: request, didFailWithError: error)
+        /// States the HTTP task can be in.
+        private var state: State = .start
+
+        private enum State {
+            /// Waiting for the HTTP response.
+            case start
+            /// We received a success response, the data will be sent to `consume` progressively.
+            case stream(HTTPResponse, readBytes: Int64)
+            /// We received an error response, the data will be accumulated in `response.body` to make the final
+            /// `HTTPError`. The body is needed for example when the response is an OPDS Authentication Document.
+            case failure(kind: HTTPError.Kind, cause: Error?, response: HTTPResponse)
+            /// The request is terminated.
+            case finished
+        }
+
+        init(request: HTTPRequest, task: URLSessionDataTask, receiveResponse: @escaping ((HTTPResponse) -> Void), consume: @escaping (Data, Double?) -> Void, completion: @escaping (HTTPResult<HTTPResponse>) -> Void) {
+            self.request = request
+            self.task = task
+            self.completion = completion
+            self.receiveResponse = receiveResponse
+            self.consume = consume
+        }
+
+        func start() {
+            self.log(.info, request)
+            task.resume()
+        }
+
+        func cancel() {
+            task.cancel()
+        }
+
+        private func finish() {
+            switch state {
+            case .start:
+                preconditionFailure("finish() called in `start` state")
+
+            case .stream(let response, _):
+                completion(.success(response))
+
+            case .failure(let kind, let cause, let response):
+                let error = HTTPError(kind: kind, cause: cause, response: response)
+                log(.error, "\(request.method) \(request.url) failed with: \(error.localizedDescription)")
+                completion(.failure(error))
+
+            case .finished:
+                break
             }
+
+            state = .finished
         }
 
-        completion(result)
-    }
-
-    func didReceiveResponse(_ response: HTTPResponse) {
-        if let client = client {
-            client.delegate?.httpClient(client, request: request, didReceiveResponse: response)
-        }
-    }
-
-    func urlSession(_ session: URLSession, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> ()) {
-        fatalError("To implement in subclasses")
-    }
-
-    func urlSession(_ session: URLSession, didReceive data: Data) {
-        fatalError("To implement in subclasses")
-    }
-
-    func urlSession(_ session: URLSession, didCompleteWithError error: Error?) {
-        fatalError("To implement in subclasses")
-    }
-
-}
-
-/// Represents an on-going fetch HTTP task.
-private final class FetchTask: BaseTask<HTTPResponse> {
-    override class var title: String { "Fetch" }
-
-    private var response: HTTPURLResponse? = nil
-    /// Body data accumulator.
-    private var body = Data()
-
-    override func urlSession(_ session: URLSession, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> ()) {
-        guard !isFinished else {
-            completionHandler(.cancel)
-            return
-        }
-
-        self.response = response as? HTTPURLResponse
-        completionHandler(.allow)
-    }
-
-    override func urlSession(_ session: URLSession, didReceive data: Data) {
-        guard !isFinished else {
-            return
-        }
-
-        body.append(data)
-    }
-
-    override func urlSession(_ session: URLSession, didCompleteWithError error: Error?) {
-        didCompleteWith(session: session, response: response, data: body, error: error, canRetry: true)
-    }
-
-    private func didCompleteWith(session: URLSession, response: URLResponse?, data: Data?, error: Error?, canRetry: Bool) {
-        if let error = error {
-            return finish(with: .failure(HTTPError(error: error)))
-        }
-        guard
-            let response = response as? HTTPURLResponse,
-            let url = response.url
-        else {
-            return finish(with: .failure(HTTPError(kind: .malformedResponse)))
-        }
-
-        let httpResponse = HTTPResponse(response: response, url: url, body: data)
-
-        guard httpResponse.body != nil, httpResponse.statusCode < 400 else {
-            if canRetry, var request = task.originalRequest, request.httpMethod?.uppercased() == "HEAD" {
-                // It was a HEAD request? We need to query the resource again to get the error body.
-                // The body is needed for example when the response is an OPDS Authentication Document.
-                request.httpMethod = "GET"
-                session.dataTask(with: request) { data, response, error in
-                    self.didCompleteWith(session: session, response: response, data: data, error: error, canRetry: false)
-                }.resume()
-
-            } else {
-                finish(with: .failure(HTTPError(response: httpResponse) ?? HTTPError(kind: .malformedResponse)))
+        func urlSession(_ session: URLSession, didReceive urlResponse: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> ()) {
+            if case .finished = state {
+                completionHandler(.cancel)
+                return
             }
-            return
-        }
-
-        didReceiveResponse(httpResponse)
-        finish(with: .success(httpResponse))
-    }
-}
-
-/// Represents an on-going progressive download HTTP task.
-private final class ProgressiveDownloadTask: BaseTask<HTTPResponse> {
-    override class var title: String { "Download (progressive)" }
-
-    enum ProgressiveDownloadError: LocalizedError {
-        case byteRangesNotSupported(url: String)
-
-        var errorDescription: String? {
-            switch self {
-            case .byteRangesNotSupported(let url):
-                return R2SharedLocalizedString("ProgressiveDownloadError.byteRangesNotSupported", url)
-            }
-        }
-    }
-
-    /// States the progressive download task can be in.
-    private enum State {
-        /// Waiting for the HTTP response.
-        case loading
-        /// We received a success response, the data will be sent to `consumeData` progressively.
-        case download(HTTPResponse, readBytes: Int64)
-        /// We received an error response, the data will be accumulated in `body` to make the final `HTTPError`.
-        /// The body is needed for example when the response is an OPDS Authentication Document.
-        case error(HTTPError.Kind, response: HTTPResponse, body: Data)
-    }
-
-    private var state: State = .loading
-
-    private let isByteRangeRequest: Bool
-    private let receiveResponse: ((HTTPResponse) -> Void)?
-    private let consumeData: (Data, Double?) -> Void
-
-    init(client: DefaultHTTPClient?, request: HTTPRequest, task: URLSessionDataTask, isByteRangeRequest: Bool, receiveResponse: ((HTTPResponse) -> Void)?, consumeData: @escaping (Data, Double?) -> Void, completion: @escaping (HTTPResult<HTTPResponse>) -> Void) {
-        self.isByteRangeRequest = isByteRangeRequest
-        self.receiveResponse = receiveResponse
-        self.consumeData = consumeData
-
-        super.init(client: client, request: request, task: task, completion: completion)
-    }
-
-    override func urlSession(_ session: URLSession, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> ()) {
-        guard !isFinished else {
-            completionHandler(.cancel)
-            return
-        }
-
-        guard
-            let response = response as? HTTPURLResponse,
-            let url = response.url
-        else {
-            completionHandler(.cancel)
-            return
-        }
-
-        let clientResponse = HTTPResponse(response: response, url: url)
-
-        if let kind = HTTPError.Kind(statusCode: clientResponse.statusCode) {
-            state = .error(kind, response: clientResponse, body: Data())
-
-        } else {
-            guard !isByteRangeRequest || response.acceptsByteRanges else {
-                let url = task.originalRequest?.url?.absoluteString ?? "N/A"
-                log(.error, "Progressive download using ranges requires the remote HTTP server to support byte range requests: \(url)")
-                finish(with: .failure(HTTPError(kind: .other, cause: ProgressiveDownloadError.byteRangesNotSupported(url: url))))
-
+            guard
+                let urlResponse = urlResponse as? HTTPURLResponse,
+                let url = urlResponse.url
+            else {
                 completionHandler(.cancel)
                 return
             }
 
-            state = .download(clientResponse, readBytes: 0)
-            self.receiveResponse?(clientResponse)
+            var response = HTTPResponse(response: urlResponse, url: url)
 
-        }
+            if let kind = HTTPError.Kind(statusCode: response.statusCode) {
+                state = .failure(kind: kind, cause: nil, response: response)
 
-        completionHandler(.allow)
-    }
+                // It was a HEAD request? We need to query the resource again to get the error body. The body is needed
+                // for example when the response is an OPDS Authentication Document.
+                if request.method == .head {
+                    var request = request
+                    request.method = .get
+                    session.dataTask(with: request.urlRequest) { data, _, error in
+                        response.body = data
+                        self.state = .failure(kind: kind, cause: error, response: response)
+                        self.finish()
+                        completionHandler(.cancel)
+                    }.resume()
+                    return
+                }
 
-    override func urlSession(_ session: URLSession, didReceive data: Data) {
-        guard !isFinished else {
-            return
-        }
+            } else {
+                guard !request.hasHeader("Range") || response.acceptsByteRanges else {
+                    log(.error, "Streaming ranges requires the remote HTTP server to support byte range requests: \(url)")
+                    state = .failure(kind: .other, cause: TaskError.byteRangesNotSupported(url: url), response: response)
+                    finish()
+                    completionHandler(.cancel)
+                    return
+                }
 
-        switch state {
-        case .loading:
-            break
-
-        case .download(let response, var readBytes):
-            readBytes += Int64(data.count)
-            // FIXME: Use task.progress.fractionCompleted once we bump minimum iOS version to 11+
-            var progress: Double? = nil
-            if let expectedBytes = response.contentLength {
-                progress = Double(min(readBytes, expectedBytes)) / Double(expectedBytes)
+                state = .stream(response, readBytes: 0)
+                receiveResponse(response)
             }
-            consumeData(data, progress)
-            state = .download(response, readBytes: readBytes)
 
-        case .error(let kind, let response, var body):
-            body.append(data)
-            state = .error(kind, response: response, body: body)
+            completionHandler(.allow)
         }
+
+        func urlSession(_ session: URLSession, didReceive data: Data) {
+            switch state {
+            case .start, .finished:
+                break
+
+            case .stream(let response, var readBytes):
+                readBytes += Int64(data.count)
+                // FIXME: Use task.progress.fractionCompleted once we bump minimum iOS version to 11+
+                var progress: Double? = nil
+                if let expectedBytes = response.contentLength {
+                    progress = Double(min(readBytes, expectedBytes)) / Double(expectedBytes)
+                }
+                consume(data, progress)
+                state = .stream(response, readBytes: readBytes)
+
+            case .failure(let kind, let cause, var response):
+                var body = response.body ?? Data()
+                body.append(data)
+                response.body = body
+                state = .failure(kind: kind, cause: cause, response: response)
+            }
+        }
+
+        func urlSession(_ session: URLSession, didCompleteWithError error: Error?) {
+            if case .failure(_, _, let response) = state, let error = error {
+                state = .failure(kind: HTTPError.Kind(error: error), cause: error, response: response)
+            }
+            finish()
+        }
+
     }
-
-    override func urlSession(_ session: URLSession, didCompleteWithError error: Error?) {
-        guard !isFinished else {
-            return
-        }
-
-        if let error = error {
-            finish(with: .failure(HTTPError(error: error)))
-            return
-        }
-
-        switch state {
-        case .loading:
-            preconditionFailure("ProgressiveDownloadTask.didCompleteWithError called in loading state")
-
-        case let .download(response, _):
-            finish(with: .success(response))
-
-        case .error(let kind, var response, let body):
-            response.body = body
-            finish(with: .failure(HTTPError(kind: kind, response: response)))
-        }
-    }
-
 }
 
 private extension HTTPRequest {
@@ -577,16 +417,6 @@ private extension HTTPRequest {
         }
 
         return request
-    }
-
-}
-
-private extension HTTPURLResponse {
-
-    /// Indicates whether this server supports byte range requests.
-    var acceptsByteRanges: Bool {
-        return (allHeaderFields["Accept-Ranges"] as? String)?.lowercased() == "bytes"
-            || (allHeaderFields["Content-Range"] as? String)?.lowercased().hasPrefix("bytes") == true
     }
 
 }

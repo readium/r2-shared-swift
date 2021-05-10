@@ -12,36 +12,61 @@ import UIKit
 /// You may provide a custom implementation, or use the `DefaultHTTPClient` one which relies on native APIs.
 public protocol HTTPClient: Loggable {
 
-    /// Fetches the resource from the given `request`.
+    /// Streams a resource from the given `request`.
     ///
     /// - Parameters:
-    ///   - request: Request to the resource to fetch.
-    func fetch(_ request: HTTPRequestConvertible, completion: @escaping (HTTPResult<HTTPResponse>) -> Void) -> Cancellable
-
-    /// Downloads a resource progressively.
-    ///
-    /// Useful in the context of streaming media playback.
-    ///
-    /// - Parameters:
-    ///   - request: Request to the downloaded resource.
-    ///   - range: If provided, issue a byte range request.
+    ///   - request: Request to the streamed resource.
     ///   - receiveResponse: Callback called when receiving the initial response, before consuming its body. You can
     ///     also access it in the completion block after consuming the data.
-    ///   - consumeData: Callback called for each chunk of data received. Callers are responsible to accumulate the data
+    ///   - consume: Callback called for each chunk of data received. Callers are responsible to accumulate the data
     ///     if needed.
-    ///   - completion: Callback called when the download finishes or an error occurs.
-    /// - Returns: A `Cancellable` interrupting the download when requested.
-    func progressiveDownload(
+    ///   - completion: Callback called when the streaming finishes or an error occurs.
+    /// - Returns: A `Cancellable` interrupting the stream when requested.
+    func stream(
         _ request: HTTPRequestConvertible,
-        range: Range<UInt64>?,
         receiveResponse: ((HTTPResponse) -> Void)?,
-        consumeData: @escaping (_ chunk: Data, _ progress: Double?) -> Void,
+        consume: @escaping (_ chunk: Data, _ progress: Double?) -> Void,
         completion: @escaping (HTTPResult<HTTPResponse>) -> Void
     ) -> Cancellable
 
 }
 
 public extension HTTPClient {
+
+    func stream(_ request: HTTPRequestConvertible, consume: @escaping (Data, Double?) -> (), completion: @escaping (HTTPResult<HTTPResponse>) -> ()) -> Cancellable {
+        stream(request, receiveResponse: nil, consume: consume, completion: completion)
+    }
+
+    /// Fetches the resource from the given `request`.
+    func fetch(_ request: HTTPRequestConvertible, completion: @escaping (HTTPResult<HTTPResponse>) -> Void) -> Cancellable {
+        var data = Data()
+        return stream(request,
+            consume: { chunk, _ in data.append(chunk) },
+            completion: { result in
+                completion(result.map {
+                    var response = $0
+                    response.body = data
+                    return response
+                })
+            }
+        )
+    }
+
+    /// Fetches a resource synchronously.
+    func fetchSync(_ request: HTTPRequestConvertible) -> HTTPResult<HTTPResponse> {
+        warnIfMainThread()
+
+        var result: HTTPResult<HTTPResponse>!
+
+        let semaphore = DispatchSemaphore(value: 0)
+        _ = fetch(request) {
+            result = $0
+            semaphore.signal()
+        }
+        _ = semaphore.wait(timeout: .distantFuture)
+
+        return result!
+    }
 
     /// Fetches the resource and attempts to decode it with the given `decoder`.
     ///
@@ -53,7 +78,10 @@ public extension HTTPClient {
     ) -> Cancellable {
         fetch(request) { response in
             let result = response.flatMap { response -> HTTPResult<T> in
-                guard let body = response.body, let result = try? decoder(response, body) else {
+                guard
+                    let body = response.body,
+                    let result = try? decoder(response, body)
+                else {
                     return .failure(HTTPError(kind: .malformedResponse))
                 }
                 return .success(result)
@@ -87,22 +115,6 @@ public extension HTTPClient {
             decoder: { UIImage(data: $1) },
             completion: completion
         )
-    }
-
-    /// Fetches a resource synchronously.
-    func synchronousFetch(_ request: HTTPRequestConvertible) -> HTTPResult<HTTPResponse> {
-        warnIfMainThread()
-
-        var result: HTTPResult<HTTPResponse>!
-
-        let semaphore = DispatchSemaphore(value: 0)
-        _ = fetch(request) {
-            result = $0
-            semaphore.signal()
-        }
-        _ = semaphore.wait(timeout: .distantFuture)
-
-        return result!
     }
 
 }

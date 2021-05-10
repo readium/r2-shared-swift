@@ -34,17 +34,17 @@ public protocol Resource {
     /// When `range` is `nil`, the whole content is returned. Out-of-range indexes are clamped to
     /// the available length automatically.
     ///
-    /// Types implementing Resource MUST override either this function or `read(range:consume:completion:)`.
+    /// Types implementing Resource MUST override either this function or `stream(range:consume:completion:)`.
     func read(range: Range<UInt64>?) -> ResourceResult<Data>
 
-    /// Reads the bytes at the given range asynchronously.
+    /// Streams the bytes at the given range asynchronously.
     ///
     /// The `consume` callback will be called with each chunk of read data. Callers are responsible to accumulate the
     /// total data.
     /// The returned `Cancellable` object can be used to cancel the reading task if not needed anymore.
     ///
     /// Types implementing Resource MUST override either this function or `read(range:)`.
-    func read(range: Range<UInt64>?, consume: @escaping (Data) -> Void, completion: @escaping (ResourceResult<Void>) -> Void) -> Cancellable
+    func stream(range: Range<UInt64>?, consume: @escaping (Data) -> Void, completion: @escaping (ResourceResult<Void>) -> Void) -> Cancellable
 
     /// Closes any opened file handles.
     func close()
@@ -57,24 +57,31 @@ public extension Resource {
         return read(range: nil)
     }
 
-    /// Default implementation of `read(range:)` using the asynchronous `read(range:consume:completion:)` provided by
+    /// Default implementation of `read(range:)` using the asynchronous `stream(range:consume:completion:)` provided by
     /// implementing types.
     func read(range: Range<UInt64>?) -> ResourceResult<Data> {
-        var result: ResourceResult<Data>!
+        var data = Data()
+        var result: ResourceResult<Void>!
         let semaphore = DispatchSemaphore(value: 0)
-        _ = read(range: range) {
-            result = $0
-            semaphore.signal()
-        }
+        _ = stream(
+            range: range,
+            consume: {
+                data.append($0)
+            },
+            completion: {
+                result = $0
+                semaphore.signal()
+            }
+        )
         _ = semaphore.wait(timeout: .distantFuture)
-        return result
+        return result.map { data }
     }
 
-    /// Default implementation of `read(range:consume:completion:)` using the synchronous `read(range:)` provided by
+    /// Default implementation of `stream(range:consume:completion:)` using the synchronous `read(range:)` provided by
     /// implementing types.
-    func read(range: Range<UInt64>?, consume: @escaping (Data) -> (), completion: @escaping (ResourceResult<()>) -> ()) -> Cancellable {
+    func stream(range: Range<UInt64>?, consume: @escaping (Data) -> (), completion: @escaping (ResourceResult<()>) -> ()) -> Cancellable {
         let cancellable = CancellableObject()
-        DispatchQueue.global(qos: .background).async {
+        DispatchQueue.global(qos: .default).async {
             switch read(range: range) {
             case .success(let data):
                 if !cancellable.isCancelled {
@@ -88,18 +95,6 @@ public extension Resource {
             }
         }
         return cancellable
-    }
-
-    /// Reads the bytes at the given range asynchronously.
-    ///
-    /// The returned `Cancellable` object can be used to cancel the reading task if not needed anymore.
-    func read(range: Range<UInt64>?, completion: @escaping (ResourceResult<Data>) -> Void) -> Cancellable {
-        var data = Data()
-        return read(
-            range: range,
-            consume: { chunk in data.append(chunk) },
-            completion: { result in completion(result.map { data }) }
-        )
     }
 
     /// Reads the full content as a `String`.
