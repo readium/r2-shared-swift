@@ -158,6 +158,7 @@
 		CABBB2F82237C99E004EB039 /* OPDSAcquisition.swift in Sources */ = {isa = PBXBuildFile; fileRef = CABBB2F72237C99E004EB039 /* OPDSAcquisition.swift */; };
 		CABBB2FA2237CA94004EB039 /* OPDSAcquisitionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CABBB2F92237CA94004EB039 /* OPDSAcquisitionTests.swift */; };
 		CABBB2FC22394450004EB039 /* ContentLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = CABBB2FB22394450004EB039 /* ContentLayout.swift */; };
+		CABC49CE264582CF00375DEF /* SearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CABC49CD264582CF00375DEF /* SearchService.swift */; };
 		CABE2A012482C6F2008E286D /* PositionsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CABE2A002482C6F2008E286D /* PositionsService.swift */; };
 		CABE2A032482C7A6008E286D /* PositionsServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CABE2A022482C7A6008E286D /* PositionsServiceTests.swift */; };
 		CABEB3DC2215698600090B6C /* Deferred.swift in Sources */ = {isa = PBXBuildFile; fileRef = CABEB3DB2215698600090B6C /* Deferred.swift */; };
@@ -367,6 +368,7 @@
 		CABBB2F72237C99E004EB039 /* OPDSAcquisition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OPDSAcquisition.swift; sourceTree = "<group>"; };
 		CABBB2F92237CA94004EB039 /* OPDSAcquisitionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OPDSAcquisitionTests.swift; sourceTree = "<group>"; };
 		CABBB2FB22394450004EB039 /* ContentLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentLayout.swift; sourceTree = "<group>"; };
+		CABC49CD264582CF00375DEF /* SearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchService.swift; sourceTree = "<group>"; };
 		CABE2A002482C6F2008E286D /* PositionsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PositionsService.swift; sourceTree = "<group>"; };
 		CABE2A022482C7A6008E286D /* PositionsServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PositionsServiceTests.swift; sourceTree = "<group>"; };
 		CABEB3DB2215698600090B6C /* Deferred.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Deferred.swift; sourceTree = "<group>"; };
@@ -902,6 +904,7 @@
 			children = (
 				CA9FC073248256450020B9CC /* PublicationService.swift */,
 				CA9FC07524825A880020B9CC /* PublicationServicesBuilder.swift */,
+				CABC49CC264582B400375DEF /* Search */,
 				CA2B6B5724C0A868007AF537 /* Content Protection */,
 				CACDE5FA24851620006FEB1B /* Cover */,
 				CA6511712588BC0E007C1C9E /* Locator */,
@@ -920,6 +923,22 @@
 				CACDE60124851681006FEB1B /* Positions */,
 			);
 			path = Services;
+			sourceTree = "<group>";
+		};
+		CAAABA9E24D7F2CD004A4466 /* Extensions */ = {
+			isa = PBXGroup;
+			children = (
+				CAAABA9F24D7F2DC004A4466 /* URLTests.swift */,
+			);
+			path = Extensions;
+			sourceTree = "<group>";
+		};
+		CABC49CC264582B400375DEF /* Search */ = {
+			isa = PBXGroup;
+			children = (
+				CABC49CD264582CF00375DEF /* SearchService.swift */,
+			);
+			path = Search;
 			sourceTree = "<group>";
 		};
 		CAC34F04221C61BD002C452E /* DRM */ = {
@@ -1228,6 +1247,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CABC49CE264582CF00375DEF /* SearchService.swift in Sources */,
 				CA6D426B240439BE002FBED4 /* OPDSCopies.swift in Sources */,
 				CA17638D223A984600959FEB /* Publication.swift in Sources */,
 				F3E7D4231F4ECB3D00DF166D /* Date+ISO8601.swift in Sources */,
