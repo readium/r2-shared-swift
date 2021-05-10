@@ -69,7 +69,7 @@ public final class HTTPFetcher: Fetcher, Loggable {
             request.httpMethod = "HEAD"
 
             return client.synchronousFetch(request)
-                .mapError { ResourceError(httpError: $0) }
+                .mapError { ResourceError.wrap($0) }
         }()
 
         /// An HTTP resource is always remote.
@@ -81,35 +81,13 @@ public final class HTTPFetcher: Fetcher, Loggable {
                 receiveResponse: nil,
                 consumeData: { data, _ in consume(data) },
                 completion: { result in
-                    completion(result.map { _ in }.mapError { ResourceError(httpError: $0) })
+                    completion(result.map { _ in }.mapError { ResourceError.wrap($0) })
                 }
             )
         }
 
         func close() {}
 
-    }
-
-}
-
-private extension ResourceError {
-
-    // Wraps an `HTTPError` into a `ResourceError`.
-    init(httpError: HTTPError) {
-        switch httpError.kind {
-        case .malformedRequest, .badRequest:
-            self = .badRequest(httpError)
-        case .timeout, .offline:
-            self = .unavailable(httpError)
-        case .unauthorized, .forbidden:
-            self = .forbidden
-        case .notFound:
-            self = .notFound
-        case .cancelled:
-            self = .cancelled
-        case .malformedResponse, .clientError, .serverError, .other:
-            self = .other(httpError)
-        }
     }
 
 }

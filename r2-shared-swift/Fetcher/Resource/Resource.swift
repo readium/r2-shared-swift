@@ -134,13 +134,13 @@ public enum ResourceError: LocalizedError {
     case badRequest(Error)
     
     /// Equivalent to a 404 HTTP error.
-    case notFound
+    case notFound(Error?)
     
     /// Equivalent to a 403 HTTP error.
     ///
     /// This can be returned when trying to read a resource protected with a DRM that is not
     /// unlocked.
-    case forbidden
+    case forbidden(Error?)
     
     /// Equivalent to a 503 HTTP error.
     ///
@@ -152,7 +152,7 @@ public enum ResourceError: LocalizedError {
     ///
     /// For example, an HTTP request was cancelled by the caller.
     case cancelled
-    
+
     /// For any other error, such as HTTP 500.
     case other(Error)
     
@@ -175,8 +175,27 @@ public enum ResourceError: LocalizedError {
     }
     
     public static func wrap(_ error: Error) -> ResourceError {
-        return error as? ResourceError
-            ?? .other(error)
+        switch error {
+        case let error as ResourceError:
+            return error
+        case let error as HTTPError:
+            switch error.kind {
+            case .malformedRequest, .badRequest:
+                return .badRequest(error)
+            case .timeout, .offline:
+                return .unavailable(error)
+            case .unauthorized, .forbidden:
+                return .forbidden(nil)
+            case .notFound:
+                return .notFound(nil)
+            case .cancelled:
+                return .cancelled
+            case .malformedResponse, .clientError, .serverError, .other:
+                return .other(error)
+            }
+        default:
+            return .other(error)
+        }
     }
     
     public var errorDescription: String? {
