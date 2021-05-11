@@ -8,10 +8,11 @@ import Foundation
 
 /// A protocol indicating that an activity or action supports cancellation.
 public protocol Cancellable {
+    /// Indicates whether the activity was cancelled.
+    var isCancelled: Bool { get }
 
     /// Cancel the on-going activity.
     func cancel()
-
 }
 
 /// A `Cancellable` object saving its cancelled state.

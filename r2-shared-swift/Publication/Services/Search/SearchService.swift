@@ -59,6 +59,10 @@ public enum SearchOption: Hashable {
     /// BCP 47 language code overriding the publication's language.
     case language(String)
 
+    /// The search string is treated as a regular expression.
+    /// The particular flavor of regex depends on the service.
+    case regularExpression(Bool)
+
     /// A custom option implemented by a Search Service which is not officially recognized by Readium.
     case custom(key: String, value: String)
 }
