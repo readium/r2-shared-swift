@@ -29,6 +29,8 @@ public protocol SearchIterator {
     ///
     /// Depending on the search algorithm, it may not be possible to know the result count until reaching the end of the
     /// publication.
+    ///
+    /// The count might be updated after each call to `next()`.
     var resultCount: Int? { get }
 
     /// Retrieves the next page of results.
