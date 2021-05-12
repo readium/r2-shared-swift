@@ -23,27 +23,29 @@ public class StringSearchService: SearchService {
         }
     }
 
-    public let options: Set<SearchOption>
+    public let options: SearchOptions
 
     private let publication: Weak<Publication>
+    private let locale: Locale?
     private let snippetLength: Int
     private let extractorFactory: ResourceContentExtractorFactory
 
     public init(publication: Weak<Publication>, language: String?, snippetLength: Int, extractorFactory: ResourceContentExtractorFactory) {
         self.publication = publication
+        self.locale = language.map { Locale(identifier: $0) }
         self.snippetLength = snippetLength
         self.extractorFactory = extractorFactory
 
-        self.options = [
-            .caseSensitive(false),
-            .diacriticSensitive(false),
-            .exact(false),
-            .regularExpression(false),
-            .language(language ?? Locale.current.languageCode ?? "en")
-        ]
+        self.options = SearchOptions(
+            caseSensitive: false,
+            diacriticSensitive: false,
+            exact: false,
+            language: locale?.languageCode ?? Locale.current.languageCode ?? "en",
+            regularExpression: false
+        )
     }
 
-    public func search(query: String, options: Set<SearchOption>, completion: @escaping (SearchResult<SearchIterator>) -> ()) -> Cancellable {
+    public func search(query: String, options: SearchOptions?, completion: @escaping (SearchResult<SearchIterator>) -> ()) -> Cancellable {
         let cancellable = CancellableObject()
 
         DispatchQueue.main.async(unlessCancelled: cancellable) {
@@ -54,6 +56,7 @@ public class StringSearchService: SearchService {
 
             completion(.success(Iterator(
                 publication: publication,
+                locale: self.locale,
                 snippetLength: self.snippetLength,
                 extractorFactory: self.extractorFactory,
                 query: query,
@@ -66,29 +69,29 @@ public class StringSearchService: SearchService {
 
     private class Iterator: SearchIterator, Loggable {
 
-        private(set) var resultCount: Int? = nil
-
-        // Accumulates result count until we reach the end of the publication, to set `resultCount`.
-        private var currentCount: Int = 0
+        private(set) var resultCount: Int? = 0
 
         private let publication: Publication
+        private let locale: Locale?
         private let snippetLength: Int
         private let extractorFactory: ResourceContentExtractorFactory
         private let query: String
-        private let options: Set<SearchOption>
+        private let options: SearchOptions
 
         fileprivate init(
             publication: Publication,
+            locale: Locale?,
             snippetLength: Int,
             extractorFactory: ResourceContentExtractorFactory,
             query: String,
-            options: Set<SearchOption>
+            options: SearchOptions?
         ) {
             self.publication = publication
+            self.locale = locale
             self.snippetLength = snippetLength
             self.extractorFactory = extractorFactory
             self.query = query
-            self.options = options
+            self.options = options ?? SearchOptions()
         }
 
         /// Index of the last reading order resource searched in.
@@ -97,7 +100,7 @@ public class StringSearchService: SearchService {
         func next(completion: @escaping (SearchResult<LocatorCollection?>) -> ()) -> Cancellable {
             let cancellable = CancellableObject()
             DispatchQueue.global().async(unlessCancelled: cancellable) {
-                self.findNext { result in
+                self.findNext(cancellable) { result in
                     DispatchQueue.main.async(unlessCancelled: cancellable) {
                         completion(result)
                     }
@@ -106,9 +109,8 @@ public class StringSearchService: SearchService {
             return cancellable
         }
 
-        private func findNext(_ completion: @escaping (SearchResult<LocatorCollection?>) -> ()) {
+        private func findNext(_ cancellable: CancellableObject, _ completion: @escaping (SearchResult<LocatorCollection?>) -> ()) {
             guard index < publication.readingOrder.count - 1 else {
-                resultCount = currentCount
                 completion(.success(nil))
                 return
             }
@@ -121,16 +123,17 @@ public class StringSearchService: SearchService {
             do {
                 guard let extractor = extractorFactory.makeExtractor(for: resource) else {
                     log(.warning, "Cannot extract text from resource: \(link.href)")
-                    return findNext(completion)
+                    return findNext(cancellable, completion)
                 }
                 let text = try extractor.extractText(of: resource).get()
 
-                let locators = findLocators(in: link, resourceIndex: index, text: text)
+                let locators = findLocators(in: link, resourceIndex: index, text: text, cancellable: cancellable)
                 // If no occurrences were found in the current resource, skip to the next one automatically.
                 guard !locators.isEmpty else {
-                    return findNext(completion)
+                    return findNext(cancellable, completion)
                 }
 
+                resultCount = (resultCount ?? 0) + locators.count
                 completion(.success(LocatorCollection(locators: locators)))
 
             } catch {
@@ -138,7 +141,7 @@ public class StringSearchService: SearchService {
             }
         }
 
-        private func findLocators(in link: Link, resourceIndex: Int, text: String) -> [Locator] {
+        private func findLocators(in link: Link, resourceIndex: Int, text: String, cancellable: CancellableObject) -> [Locator] {
             guard !text.isEmpty else {
                 return []
             }
@@ -148,20 +151,38 @@ public class StringSearchService: SearchService {
 
             var locators: [Locator] = []
 
-            for range in findRanges(text: text, query: query, options: options) {
+            for range in findRanges(in: text, cancellable: cancellable) {
+                guard !cancellable.isCancelled else {
+                    return locators
+                }
+
                 locators.append(makeLocator(resourceIndex: index, resourceLocator: resourceLocator, text: text, range: range))
             }
 
             return locators
         }
 
-        private func findRanges(text: String, query: String, options: Set<SearchOption>) -> [Range<String.Index>] {
-            var ranges: [Range<String.Index>] = []
+        private func findRanges(in text: String, cancellable: CancellableObject) -> [Range<String.Index>] {
+            let locale = options.language.map { Locale(identifier: $0) } ?? locale
 
             var compareOptions: NSString.CompareOptions = []
-            let locale: Locale? = nil
+            if options.regularExpression ?? false {
+                compareOptions.insert(.regularExpression)
+            } else if (options.exact ?? false) {
+                compareOptions.insert(.literal)
+            } else {
+                if !(options.caseSensitive ?? false) {
+                    compareOptions.insert(.caseInsensitive)
+                }
+                if !(options.diacriticSensitive ?? false) {
+                    compareOptions.insert(.diacriticInsensitive)
+                }
+            }
+
+            var ranges: [Range<String.Index>] = []
             var index = text.startIndex
             while
+                !cancellable.isCancelled,
                 index < text.endIndex,
                 let range = text.range(of: query, options: compareOptions, range: index..<text.endIndex, locale: locale),
                 !range.isEmpty
@@ -174,7 +195,7 @@ public class StringSearchService: SearchService {
         }
 
         private func makeLocator(resourceIndex: Int, resourceLocator: Locator, text: String, range: Range<String.Index>) -> Locator {
-            let progression = min(0.0, max(1.0, Double(range.lowerBound.utf16Offset(in: text)) / Double(text.endIndex.utf16Offset(in: text))))
+            let progression = max(0.0, min(1.0, Double(range.lowerBound.utf16Offset(in: text)) / Double(text.endIndex.utf16Offset(in: text))))
 
             var totalProgression: Double? = nil
             let positions = publication.positionsByReadingOrder
@@ -199,7 +220,7 @@ public class StringSearchService: SearchService {
         private func makeSnippet(text: String, range: Range<String.Index>) -> Locator.Text {
             var before = ""
             var count = snippetLength
-            for char in text[...range.lowerBound].reversed() {
+            for char in text[...range.lowerBound].reversed().dropFirst() {
                 guard count >= 0 || !char.isWhitespace else {
                     break
                 }
@@ -243,16 +264,5 @@ fileprivate extension Link {
             return title
         }
         return children.titleMatchingHREF(targetHREF)
-    }
-}
-
-fileprivate extension DispatchQueue {
-    func async(unlessCancelled cancellable: Cancellable, execute work: @escaping () -> Void) {
-        async {
-            guard !cancellable.isCancelled else {
-                return
-            }
-            work()
-        }
     }
 }

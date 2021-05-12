@@ -6,25 +6,20 @@
 
 import Foundation
 
+public typealias SearchServiceFactory = (PublicationServiceContext) -> SearchService?
+
 /// Provides a way to search terms in a publication.
 public protocol SearchService: PublicationService {
 
-    /// All search options available for this service.
+    /// Default value for the search options of this service.
     ///
-    /// Also holds the default value for these options, which can be useful to setup the views in the search interface.
-    /// If an option is missing when calling search(), its value is assumed to be the default one.
-    var options: Set<SearchOption> { get }
+    /// If an option does not have a value, it is not supported by the service.
+    var options: SearchOptions { get }
 
     /// Starts a new search through the publication content, with the given `query`.
-    func search(query: String, options: Set<SearchOption>, completion: @escaping (SearchResult<SearchIterator>) -> Void) -> Cancellable
-}
-
-public extension SearchService {
-
-    func search(query: String, completion: @escaping (SearchResult<SearchIterator>) -> Void) -> Cancellable {
-        search(query: query, options: [], completion: completion)
-    }
-
+    /// If an option is nil when calling search(), its value is assumed to be the default one.
+    @discardableResult
+    func search(query: String, options: SearchOptions?, completion: @escaping (SearchResult<SearchIterator>) -> Void) -> Cancellable
 }
 
 /// Iterates through search results.
@@ -39,32 +34,92 @@ public protocol SearchIterator {
     /// Retrieves the next page of results.
     ///
     /// Returns nil when reaching the end of the publication, or an error in case of failure.
+    @discardableResult
     func next(completion: @escaping (SearchResult<LocatorCollection?>) -> Void) -> Cancellable
 }
 
-/// Represents an option and its current value supported by a service.
-public enum SearchOption: Hashable {
+public extension SearchIterator {
+
+    /// Iterates over all the search results, calling the given `block` for each page.
+    @discardableResult
+    func forEach(_ block: @escaping (LocatorCollection) throws -> Void, completion: @escaping (SearchResult<Void>) -> Void) -> Cancellable {
+        let mediator = MediatorCancellable()
+
+        func next() {
+            let cancellable = self.next { result in
+                switch result {
+                case .success(let locators):
+                    if let locators = locators {
+                        do {
+                            try block(locators)
+                            next()
+                        } catch {
+                            completion(.failure(.wrap(error)))
+                        }
+                    } else {
+                        completion(.success(()))
+                    }
+                case .failure(let error):
+                    completion(.failure(error))
+                }
+            }
+            mediator.mediate(cancellable)
+        }
+
+        next()
+        return mediator
+    }
+
+}
+
+/// Holds the available search options and their current values.
+public struct SearchOptions: Hashable {
     /// Whether the search will differentiate between capital and lower-case letters.
-    case caseSensitive(Bool)
+    public var caseSensitive: Bool?
 
     /// Whether the search will differentiate between letters with accents or not.
-    case diacriticSensitive(Bool)
+    public var diacriticSensitive: Bool?
 
     /// Whether the query terms will match full words and not parts of a word.
-    case wholeWord(Bool)
+    public var wholeWord: Bool?
 
     /// Matches results exactly as stated in the query terms, taking into account stop words, order and spelling.
-    case exact(Bool)
+    public var exact: Bool?
 
     /// BCP 47 language code overriding the publication's language.
-    case language(String)
+    public var language: String?
 
     /// The search string is treated as a regular expression.
     /// The particular flavor of regex depends on the service.
-    case regularExpression(Bool)
+    public var regularExpression: Bool?
 
-    /// A custom option implemented by a Search Service which is not officially recognized by Readium.
-    case custom(key: String, value: String)
+    /// Map of custom options implemented by a Search Service which are not officially recognized by Readium.
+    public var otherOptions: [String: String]
+
+    /// Syntactic sugar to access the `otherOptions` values by subscripting `SearchOptions` directly.
+    /// options["com.company.x"]
+    public subscript(_ key: String) -> String? {
+        get { otherOptions[key] }
+        set { otherOptions[key] = newValue }
+    }
+
+    public init(
+        caseSensitive: Bool? = nil,
+        diacriticSensitive: Bool? = nil,
+        wholeWord: Bool? = nil,
+        exact: Bool? = nil,
+        language: String? = nil,
+        regularExpression: Bool? = nil,
+        otherOptions: [String: String] = [:]
+    ) {
+        self.caseSensitive = caseSensitive
+        self.diacriticSensitive = diacriticSensitive
+        self.wholeWord = wholeWord
+        self.exact = exact
+        self.language = language
+        self.regularExpression = regularExpression
+        self.otherOptions = otherOptions
+    }
 }
 
 public typealias SearchResult<Success> = Result<Success, SearchError>
