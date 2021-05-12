@@ -123,3 +123,52 @@ public enum SearchError: LocalizedError {
     }
 
 }
+
+
+// MARK: Publication Helpers
+
+public extension Publication {
+
+    private var searchService: SearchService? { findService(SearchService.self) }
+
+    /// Indicates whether the content of this publication can be searched.
+    var isSearchable: Bool {
+        searchService != nil
+    }
+
+    /// Default value for the search options of this publication.
+    var searchOptions: SearchOptions {
+        searchService?.options ?? SearchOptions()
+    }
+
+    /// Starts a new search through the publication content, with the given `query`.
+    /// If an option is nil when calling search(), its value is assumed to be the default one for the search service.
+    @discardableResult
+    func search(query: String, options: SearchOptions? = nil, completion: @escaping (SearchResult<SearchIterator>) -> Void) -> Cancellable {
+        guard let service = searchService else {
+            let cancellable = CancellableObject()
+            DispatchQueue.main.async(unlessCancelled: cancellable) {
+                completion(.failure(.publicationNotSearchable))
+            }
+            return cancellable
+        }
+
+        return service.search(query: query, options: options, completion: completion)
+    }
+
+}
+
+
+// MARK: PublicationServicesBuilder Helpers
+
+public extension PublicationServicesBuilder {
+
+    mutating func setSearchServiceFactory(_ factory: SearchServiceFactory?) {
+        if let factory = factory {
+            set(SearchService.self, factory)
+        } else {
+            remove(SearchService.self)
+        }
+    }
+
+}
