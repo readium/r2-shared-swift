@@ -10,14 +10,21 @@ import Foundation
 ///
 /// To stay media-type-agnostic, `StringSearchService` relies on `ResourceContentExtractor` implementations to retrieve
 /// the pure text content from markups (e.g. HTML) or binary (e.g. PDF) resources.
+///
+/// The actual search is implemented by the provided `searchAlgorithm`.
 public class StringSearchService: SearchService {
 
-    public static func makeFactory(snippetLength: Int = 200, extractorFactory: ResourceContentExtractorFactory = DefaultResourceContentExtractorFactory()) -> (PublicationServiceContext) -> StringSearchService? {
+    public static func makeFactory(
+        snippetLength: Int = 200,
+        searchAlgorithm: StringSearchAlgorithm = BasicStringSearchAlgorithm(),
+        extractorFactory: ResourceContentExtractorFactory = DefaultResourceContentExtractorFactory()
+    ) -> (PublicationServiceContext) -> StringSearchService? {
         return { context in
             StringSearchService(
                 publication: context.publication,
                 language: context.manifest.metadata.languages.first,
                 snippetLength: snippetLength,
+                searchAlgorithm: searchAlgorithm,
                 extractorFactory: extractorFactory
             )
         }
@@ -28,21 +35,19 @@ public class StringSearchService: SearchService {
     private let publication: Weak<Publication>
     private let locale: Locale?
     private let snippetLength: Int
+    private let searchAlgorithm: StringSearchAlgorithm
     private let extractorFactory: ResourceContentExtractorFactory
 
-    public init(publication: Weak<Publication>, language: String?, snippetLength: Int, extractorFactory: ResourceContentExtractorFactory) {
+    public init(publication: Weak<Publication>, language: String?, snippetLength: Int, searchAlgorithm: StringSearchAlgorithm, extractorFactory: ResourceContentExtractorFactory) {
         self.publication = publication
         self.locale = language.map { Locale(identifier: $0) }
         self.snippetLength = snippetLength
+        self.searchAlgorithm = searchAlgorithm
         self.extractorFactory = extractorFactory
 
-        self.options = SearchOptions(
-            caseSensitive: false,
-            diacriticSensitive: false,
-            exact: false,
-            language: locale?.languageCode ?? Locale.current.languageCode ?? "en",
-            regularExpression: false
-        )
+        var options = searchAlgorithm.options
+        options.language = locale?.languageCode ?? Locale.current.languageCode ?? "en"
+        self.options = options
     }
 
     public func search(query: String, options: SearchOptions?, completion: @escaping (SearchResult<SearchIterator>) -> ()) -> Cancellable {
@@ -58,6 +63,7 @@ public class StringSearchService: SearchService {
                 publication: publication,
                 locale: self.locale,
                 snippetLength: self.snippetLength,
+                searchAlgorithm: self.searchAlgorithm,
                 extractorFactory: self.extractorFactory,
                 query: query,
                 options: options
@@ -74,6 +80,7 @@ public class StringSearchService: SearchService {
         private let publication: Publication
         private let locale: Locale?
         private let snippetLength: Int
+        private let searchAlgorithm: StringSearchAlgorithm
         private let extractorFactory: ResourceContentExtractorFactory
         private let query: String
         private let options: SearchOptions
@@ -82,6 +89,7 @@ public class StringSearchService: SearchService {
             publication: Publication,
             locale: Locale?,
             snippetLength: Int,
+            searchAlgorithm: StringSearchAlgorithm,
             extractorFactory: ResourceContentExtractorFactory,
             query: String,
             options: SearchOptions?
@@ -89,6 +97,7 @@ public class StringSearchService: SearchService {
             self.publication = publication
             self.locale = locale
             self.snippetLength = snippetLength
+            self.searchAlgorithm = searchAlgorithm
             self.extractorFactory = extractorFactory
             self.query = query
             self.options = options ?? SearchOptions()
@@ -146,12 +155,13 @@ public class StringSearchService: SearchService {
                 return []
             }
 
+            let locale = options.language.map { Locale(identifier: $0) } ?? locale
             let title = publication.tableOfContents.titleMatchingHREF(link.href) ?? link.title
             let resourceLocator = Locator(link: link).copy(title: title)
 
             var locators: [Locator] = []
 
-            for range in findRanges(in: text, cancellable: cancellable) {
+            for range in searchAlgorithm.findRanges(of: query, options: options, in: text, locale: locale, cancellable: cancellable) {
                 guard !cancellable.isCancelled else {
                     return locators
                 }
@@ -160,38 +170,6 @@ public class StringSearchService: SearchService {
             }
 
             return locators
-        }
-
-        private func findRanges(in text: String, cancellable: CancellableObject) -> [Range<String.Index>] {
-            let locale = options.language.map { Locale(identifier: $0) } ?? locale
-
-            var compareOptions: NSString.CompareOptions = []
-            if options.regularExpression ?? false {
-                compareOptions.insert(.regularExpression)
-            } else if (options.exact ?? false) {
-                compareOptions.insert(.literal)
-            } else {
-                if !(options.caseSensitive ?? false) {
-                    compareOptions.insert(.caseInsensitive)
-                }
-                if !(options.diacriticSensitive ?? false) {
-                    compareOptions.insert(.diacriticInsensitive)
-                }
-            }
-
-            var ranges: [Range<String.Index>] = []
-            var index = text.startIndex
-            while
-                !cancellable.isCancelled,
-                index < text.endIndex,
-                let range = text.range(of: query, options: compareOptions, range: index..<text.endIndex, locale: locale),
-                !range.isEmpty
-            {
-                ranges.append(range)
-                index = text.index(range.lowerBound, offsetBy: 1)
-            }
-
-            return ranges
         }
 
         private func makeLocator(resourceIndex: Int, resourceLocator: Locator, text: String, range: Range<String.Index>) -> Locator {
@@ -244,6 +222,63 @@ public class StringSearchService: SearchService {
                 highlight: String(text[range])
             )
         }
+    }
+}
+
+/// Implements the actual search algorithm in sanitized text content.
+public protocol StringSearchAlgorithm {
+
+    /// Default value for the search options available with this algorithm.
+    ///
+    /// If an option does not have a value, it is not supported by the algorithm.
+    var options: SearchOptions { get }
+
+    /// Finds all the ranges of occurrences of the given `query` in the `text`.
+    ///
+    /// Implementers should check `cancellable.isCancelled` frequently to abort the search if needed.
+    func findRanges(of query: String, options: SearchOptions, in text: String, locale: Locale?, cancellable: CancellableObject) -> [Range<String.Index>]
+}
+
+/// A basic `StringSearchAlgorithm` using the native `String.range(of:)` APIs.
+public class BasicStringSearchAlgorithm: StringSearchAlgorithm {
+
+    public let options: SearchOptions = SearchOptions(
+        caseSensitive: false,
+        diacriticSensitive: false,
+        exact: false,
+        regularExpression: false
+    )
+
+    public init() {}
+
+    public func findRanges(of query: String, options: SearchOptions, in text: String, locale: Locale?, cancellable: CancellableObject) -> [Range<Swift.String.Index>] {
+        var compareOptions: NSString.CompareOptions = []
+        if options.regularExpression ?? false {
+            compareOptions.insert(.regularExpression)
+        } else if (options.exact ?? false) {
+            compareOptions.insert(.literal)
+        } else {
+            if !(options.caseSensitive ?? false) {
+                compareOptions.insert(.caseInsensitive)
+            }
+            if !(options.diacriticSensitive ?? false) {
+                compareOptions.insert(.diacriticInsensitive)
+            }
+        }
+
+        var ranges: [Range<String.Index>] = []
+        var index = text.startIndex
+        while
+            !cancellable.isCancelled,
+            index < text.endIndex,
+            let range = text.range(of: query, options: compareOptions, range: index..<text.endIndex, locale: locale),
+            !range.isEmpty
+        {
+            ranges.append(range)
+            index = text.index(range.lowerBound, offsetBy: 1)
+        }
+
+        return ranges
     }
 }
 
