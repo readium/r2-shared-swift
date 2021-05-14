@@ -38,6 +38,10 @@ public protocol SearchIterator {
     /// Returns nil when reaching the end of the publication, or an error in case of failure.
     @discardableResult
     func next(completion: @escaping (SearchResult<LocatorCollection?>) -> Void) -> Cancellable
+
+    /// Closes any resources allocated for the search query, such as a cursor.
+    /// To be called when the user dismisses the search.
+    func close()
 }
 
 public extension SearchIterator {
@@ -72,6 +76,7 @@ public extension SearchIterator {
         return mediator
     }
 
+    func close() {}
 }
 
 /// Holds the available search options and their current values.
