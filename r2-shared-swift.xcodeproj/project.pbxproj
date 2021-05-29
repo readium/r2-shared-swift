@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 46;
+	objectVersion = 52;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -25,6 +25,8 @@
 		3ED94D4C8226C7D44A62DEBA /* Resource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ED9477F7DC86616C5ADEA73 /* Resource.swift */; };
 		3ED94F56B050CCF55F90524E /* MediaTypeSnifferTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ED9404DDFEB701146894979 /* MediaTypeSnifferTests.swift */; };
 		57470F7E20ED0D1A000CDCA3 /* DownloadSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57470F7D20ED0D1A000CDCA3 /* DownloadSession.swift */; };
+		955EFA1B2662E2BC00BB7C30 /* Zip in Frameworks */ = {isa = PBXBuildFile; productRef = 955EFA1A2662E2BC00BB7C30 /* Zip */; };
+		955EFA1E2662E2D600BB7C30 /* Fuzi in Frameworks */ = {isa = PBXBuildFile; productRef = 955EFA1D2662E2D600BB7C30 /* Fuzi */; };
 		CA038E2F2520D3F700489729 /* PDFKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA038E2E2520D3F700489729 /* PDFKit.swift */; };
 		CA038E5025222B0900489729 /* ControlFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA038E4F25222B0900489729 /* ControlFlow.swift */; };
 		CA0D3C0F2518E213005B47BC /* PDFDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0D3C0E2518E213005B47BC /* PDFDocument.swift */; };
@@ -121,8 +123,6 @@
 		CA7116F12455FAF900C029FD /* UTI.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA7116F02455FAF900C029FD /* UTI.swift */; };
 		CA7B1AA5248A2CFF00152F73 /* URITemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA7B1AA4248A2CFF00152F73 /* URITemplate.swift */; };
 		CA7B1AA7248A2D1200152F73 /* URITemplateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA7B1AA6248A2D1200152F73 /* URITemplateTests.swift */; };
-		CA7B7798263AB83F00260838 /* Fuzi.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CA7B7797263AB83F00260838 /* Fuzi.framework */; };
-		CA7B779C263AB84300260838 /* Minizip.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CA7B779B263AB84300260838 /* Minizip.framework */; };
 		CA81741C24585E6700033776 /* NowPlayingInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA81741B24585E6700033776 /* NowPlayingInfo.swift */; };
 		CA86728E24485BE70035FDF4 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CA86728D24485BE70035FDF4 /* CoreServices.framework */; };
 		CA8C84142468906600CE97A4 /* Fetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA8C84132468906600CE97A4 /* Fetcher.swift */; };
@@ -420,9 +420,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CA7B7798263AB83F00260838 /* Fuzi.framework in Frameworks */,
 				CA86728E24485BE70035FDF4 /* CoreServices.framework in Frameworks */,
-				CA7B779C263AB84300260838 /* Minizip.framework in Frameworks */,
+				955EFA1B2662E2BC00BB7C30 /* Zip in Frameworks */,
+				955EFA1E2662E2D600BB7C30 /* Fuzi in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1095,6 +1095,10 @@
 			dependencies = (
 			);
 			name = "r2-shared-swift";
+			packageProductDependencies = (
+				955EFA1A2662E2BC00BB7C30 /* Zip */,
+				955EFA1D2662E2D600BB7C30 /* Fuzi */,
+			);
 			productName = "r2-shared-swift";
 			productReference = F3E7D3F41F4EBE2100DF166D /* R2Shared.framework */;
 			productType = "com.apple.product-type.framework";
@@ -1131,6 +1135,10 @@
 				Base,
 			);
 			mainGroup = F3E7D3EA1F4EBE2100DF166D;
+			packageReferences = (
+				955EFA192662E2BC00BB7C30 /* XCRemoteSwiftPackageReference "Zip" */,
+				955EFA1C2662E2D600BB7C30 /* XCRemoteSwiftPackageReference "Fuzi" */,
+			);
 			productRefGroup = F3E7D3F51F4EBE2100DF166D /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -1389,7 +1397,11 @@
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				INFOPLIST_FILE = "r2-shared-swiftTests/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 11.4;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = "org.readium.r2-shared-swiftTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -1412,7 +1424,11 @@
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				INFOPLIST_FILE = "r2-shared-swiftTests/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 11.4;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = "org.readium.r2-shared-swiftTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -1532,7 +1548,8 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
-				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALIDATE_PRODUCT = YES;
@@ -1562,7 +1579,10 @@
 				INFOPLIST_FILE = "r2-shared-swift/Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
 				OTHER_LDFLAGS = "-lxml2";
 				PRODUCT_BUNDLE_IDENTIFIER = "org.readium.r2-shared-swift";
 				PRODUCT_NAME = R2Shared;
@@ -1596,7 +1616,10 @@
 				INFOPLIST_FILE = "r2-shared-swift/Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
 				OTHER_LDFLAGS = "-lxml2";
 				PRODUCT_BUNDLE_IDENTIFIER = "org.readium.r2-shared-swift";
 				PRODUCT_NAME = R2Shared;
@@ -1639,6 +1662,38 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		955EFA192662E2BC00BB7C30 /* XCRemoteSwiftPackageReference "Zip" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/marmelroy/Zip";
+			requirement = {
+				kind = exactVersion;
+				version = 2.1.1;
+			};
+		};
+		955EFA1C2662E2D600BB7C30 /* XCRemoteSwiftPackageReference "Fuzi" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/cezheng/Fuzi/";
+			requirement = {
+				kind = exactVersion;
+				version = 3.1.3;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		955EFA1A2662E2BC00BB7C30 /* Zip */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 955EFA192662E2BC00BB7C30 /* XCRemoteSwiftPackageReference "Zip" */;
+			productName = Zip;
+		};
+		955EFA1D2662E2D600BB7C30 /* Fuzi */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 955EFA1C2662E2D600BB7C30 /* XCRemoteSwiftPackageReference "Fuzi" */;
+			productName = Fuzi;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = F3E7D3EB1F4EBE2100DF166D /* Project object */;
 }
