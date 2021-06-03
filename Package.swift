@@ -17,14 +17,13 @@ let package = Package(
         .package(url: "https://github.com/marmelroy/Zip.git", .exact("2.1.1")),
         .package(url: "https://github.com/cezheng/Fuzi.git", .exact("3.1.3")),
         .package(url: "https://github.com/weichsel/ZIPFoundation.git", .exact("0.9.11")),
-        .package(name: "GCDWebServers", url: "https://github.com/stevenzeck/GCDWebServer.git", .branch("use-spm")),
     ],
     targets: [
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
         // Targets can depend on other targets in this package, and on products in packages this package depends on.
         .target(
             name: "R2Shared",
-            dependencies: ["Zip", "Fuzi", "ZIPFoundation", "GCDWebServers"],
+            dependencies: ["Zip", "Fuzi", "ZIPFoundation"],
             path: "./r2-shared-swift/",
             exclude: ["Info.plist", "Toolkit/Archive/ZIPFoundation.swift"]
         ),
