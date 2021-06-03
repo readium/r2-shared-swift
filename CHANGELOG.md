@@ -4,7 +4,19 @@ All notable changes to this project will be documented in this file.
 
 **Warning:** Features marked as *experimental* may change or be removed in a future release without notice. Use with caution.
 
-<!--## [Unreleased]-->
+## [Unreleased]
+
+### Added
+
+* `Link` objects from archive-based publication assets (e.g. an EPUB/ZIP) have additional properties for entry metadata.
+    ```json
+    "properties" {
+        "archive": {
+            "entryLength": 8273,
+            "isEntryCompressed": true
+        }
+    }
+    ```
 
 ## [2.0.1]
 
