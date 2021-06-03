@@ -11,6 +11,15 @@
         }
       },
       {
+        "package": "GCDWebServers",
+        "repositoryURL": "https://github.com/stevenzeck/GCDWebServer.git",
+        "state": {
+          "branch": "use-spm",
+          "revision": "721665469fc80c39605b14c925070ccf3f16a962",
+          "version": null
+        }
+      },
+      {
         "package": "Zip",
         "repositoryURL": "https://github.com/marmelroy/Zip.git",
         "state": {
