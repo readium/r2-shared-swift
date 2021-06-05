@@ -360,14 +360,14 @@ class LocatorCollectionTests: XCTestCase {
 
     func testParseMinimalJSON() {
         XCTAssertEqual(
-            LocatorCollection(json: [:]),
-            LocatorCollection()
+            _LocatorCollection(json: [:]),
+            _LocatorCollection()
         )
     }
 
     func testParseFullJSON() {
         XCTAssertEqual(
-            LocatorCollection(json: [
+            _LocatorCollection(json: [
                 "metadata": [
                     "title": [
                         "en": "Searching <riddle> in Alice in Wonderlands - Page 1",
@@ -413,8 +413,8 @@ class LocatorCollectionTests: XCTestCase {
                     ]
                 ]
             ]),
-            LocatorCollection(
-                metadata: LocatorCollection.Metadata(
+            _LocatorCollection(
+                metadata: _LocatorCollection.Metadata(
                     title: LocalizedString.localized([
                         "en": "Searching <riddle> in Alice in Wonderlands - Page 1",
                         "fr": "Recherche <riddle> dans Alice in Wonderlands – Page 1"
@@ -462,22 +462,22 @@ class LocatorCollectionTests: XCTestCase {
 
     func testParseEmptyJSON() {
         XCTAssertEqual(
-            LocatorCollection(json: [:]),
-            LocatorCollection()
+            _LocatorCollection(json: [:]),
+            _LocatorCollection()
         )
     }
 
     func testParseNilJSON() {
-        XCTAssertNil(LocatorCollection(json: nil))
+        XCTAssertNil(_LocatorCollection(json: nil))
     }
 
     func testParseInvalidJSON() {
-        XCTAssertNil(LocatorCollection(json: []))
+        XCTAssertNil(_LocatorCollection(json: []))
     }
 
     func testGetMinimalJSON() {
         AssertJSONEqual(
-            LocatorCollection().json as Any,
+            _LocatorCollection().json as Any,
             [
                 "locators": []
             ]
@@ -486,8 +486,8 @@ class LocatorCollectionTests: XCTestCase {
 
     func testGetFullJSON() {
         AssertJSONEqual(
-            LocatorCollection(
-                metadata: LocatorCollection.Metadata(
+            _LocatorCollection(
+                metadata: _LocatorCollection.Metadata(
                     title: LocalizedString.localized([
                         "en": "Searching <riddle> in Alice in Wonderlands - Page 1",
                         "fr": "Recherche <riddle> dans Alice in Wonderlands – Page 1"

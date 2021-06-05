@@ -295,7 +295,10 @@ extension Array where Element == Locator {
 /// Represents a sequential list of `Locator` objects.
 ///
 /// For example, a search result or a list of positions.
-public struct LocatorCollection: Hashable {
+///
+/// **WARNING:** This API is experimental and may change or be removed in a future release without
+/// notice. Use with caution.
+public struct _LocatorCollection: Hashable {
 
     public let metadata: Metadata
     public let links: [Link]

@@ -6,10 +6,13 @@
 
 import Foundation
 
-public typealias SearchServiceFactory = (PublicationServiceContext) -> SearchService?
+public typealias SearchServiceFactory = (PublicationServiceContext) -> _SearchService?
 
 /// Provides a way to search terms in a publication.
-public protocol SearchService: PublicationService {
+///
+/// **WARNING:** This API is experimental and may change or be removed in a future release without
+/// notice. Use with caution.
+public protocol _SearchService: PublicationService {
 
     /// Default value for the search options of this service.
     ///
@@ -37,7 +40,7 @@ public protocol SearchIterator {
     ///
     /// Returns nil when reaching the end of the publication, or an error in case of failure.
     @discardableResult
-    func next(completion: @escaping (SearchResult<LocatorCollection?>) -> Void) -> Cancellable
+    func next(completion: @escaping (SearchResult<_LocatorCollection?>) -> Void) -> Cancellable
 
     /// Closes any resources allocated for the search query, such as a cursor.
     /// To be called when the user dismisses the search.
@@ -48,7 +51,7 @@ public extension SearchIterator {
 
     /// Iterates over all the search results, calling the given `block` for each page.
     @discardableResult
-    func forEach(_ block: @escaping (LocatorCollection) throws -> Void, completion: @escaping (SearchResult<Void>) -> Void) -> Cancellable {
+    func forEach(_ block: @escaping (_LocatorCollection) throws -> Void, completion: @escaping (SearchResult<Void>) -> Void) -> Cancellable {
         let mediator = MediatorCancellable()
 
         func next() {
@@ -191,22 +194,31 @@ public enum SearchError: LocalizedError {
 
 public extension Publication {
 
-    private var searchService: SearchService? { findService(SearchService.self) }
+    private var searchService: _SearchService? { findService(_SearchService.self) }
 
     /// Indicates whether the content of this publication can be searched.
-    var isSearchable: Bool {
+    ///
+    /// **WARNING:** This API is experimental and may change or be removed in a future release without
+    /// notice. Use with caution.
+    var _isSearchable: Bool {
         searchService != nil
     }
 
     /// Default value for the search options of this publication.
-    var searchOptions: SearchOptions {
+    ///
+    /// **WARNING:** This API is experimental and may change or be removed in a future release without
+    /// notice. Use with caution.
+    var _searchOptions: SearchOptions {
         searchService?.options ?? SearchOptions()
     }
 
     /// Starts a new search through the publication content, with the given `query`.
     /// If an option is nil when calling search(), its value is assumed to be the default one for the search service.
+    ///
+    /// **WARNING:** This API is experimental and may change or be removed in a future release without
+    /// notice. Use with caution.
     @discardableResult
-    func search(query: String, options: SearchOptions? = nil, completion: @escaping (SearchResult<SearchIterator>) -> Void) -> Cancellable {
+    func _search(query: String, options: SearchOptions? = nil, completion: @escaping (SearchResult<SearchIterator>) -> Void) -> Cancellable {
         guard let service = searchService else {
             let cancellable = CancellableObject()
             DispatchQueue.main.async(unlessCancelled: cancellable) {
@@ -227,9 +239,9 @@ public extension PublicationServicesBuilder {
 
     mutating func setSearchServiceFactory(_ factory: SearchServiceFactory?) {
         if let factory = factory {
-            set(SearchService.self, factory)
+            set(_SearchService.self, factory)
         } else {
-            remove(SearchService.self)
+            remove(_SearchService.self)
         }
     }
 

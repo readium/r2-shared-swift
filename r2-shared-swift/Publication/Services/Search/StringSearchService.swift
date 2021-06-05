@@ -12,15 +12,18 @@ import Foundation
 /// the pure text content from markups (e.g. HTML) or binary (e.g. PDF) resources.
 ///
 /// The actual search is implemented by the provided `searchAlgorithm`.
-public class StringSearchService: SearchService {
+///
+/// **WARNING:** This API is experimental and may change or be removed in a future release without
+/// notice. Use with caution.
+public class _StringSearchService: _SearchService {
 
     public static func makeFactory(
         snippetLength: Int = 200,
         searchAlgorithm: StringSearchAlgorithm = BasicStringSearchAlgorithm(),
-        extractorFactory: ResourceContentExtractorFactory = DefaultResourceContentExtractorFactory()
-    ) -> (PublicationServiceContext) -> StringSearchService? {
+        extractorFactory: _ResourceContentExtractorFactory = _DefaultResourceContentExtractorFactory()
+    ) -> (PublicationServiceContext) -> _StringSearchService? {
         return { context in
-            StringSearchService(
+            _StringSearchService(
                 publication: context.publication,
                 language: context.manifest.metadata.languages.first,
                 snippetLength: snippetLength,
@@ -36,9 +39,9 @@ public class StringSearchService: SearchService {
     private let locale: Locale?
     private let snippetLength: Int
     private let searchAlgorithm: StringSearchAlgorithm
-    private let extractorFactory: ResourceContentExtractorFactory
+    private let extractorFactory: _ResourceContentExtractorFactory
 
-    public init(publication: Weak<Publication>, language: String?, snippetLength: Int, searchAlgorithm: StringSearchAlgorithm, extractorFactory: ResourceContentExtractorFactory) {
+    public init(publication: Weak<Publication>, language: String?, snippetLength: Int, searchAlgorithm: StringSearchAlgorithm, extractorFactory: _ResourceContentExtractorFactory) {
         self.publication = publication
         self.locale = language.map { Locale(identifier: $0) }
         self.snippetLength = snippetLength
@@ -81,7 +84,7 @@ public class StringSearchService: SearchService {
         private let locale: Locale?
         private let snippetLength: Int
         private let searchAlgorithm: StringSearchAlgorithm
-        private let extractorFactory: ResourceContentExtractorFactory
+        private let extractorFactory: _ResourceContentExtractorFactory
         private let query: String
         private let options: SearchOptions
 
@@ -90,7 +93,7 @@ public class StringSearchService: SearchService {
             locale: Locale?,
             snippetLength: Int,
             searchAlgorithm: StringSearchAlgorithm,
-            extractorFactory: ResourceContentExtractorFactory,
+            extractorFactory: _ResourceContentExtractorFactory,
             query: String,
             options: SearchOptions?
         ) {
@@ -106,7 +109,7 @@ public class StringSearchService: SearchService {
         /// Index of the last reading order resource searched in.
         private var index = -1
 
-        func next(completion: @escaping (SearchResult<LocatorCollection?>) -> ()) -> Cancellable {
+        func next(completion: @escaping (SearchResult<_LocatorCollection?>) -> ()) -> Cancellable {
             let cancellable = CancellableObject()
             DispatchQueue.global().async(unlessCancelled: cancellable) {
                 self.findNext(cancellable) { result in
@@ -118,7 +121,7 @@ public class StringSearchService: SearchService {
             return cancellable
         }
 
-        private func findNext(_ cancellable: CancellableObject, _ completion: @escaping (SearchResult<LocatorCollection?>) -> ()) {
+        private func findNext(_ cancellable: CancellableObject, _ completion: @escaping (SearchResult<_LocatorCollection?>) -> ()) {
             guard index < publication.readingOrder.count - 1 else {
                 completion(.success(nil))
                 return
@@ -143,7 +146,7 @@ public class StringSearchService: SearchService {
                 }
 
                 resultCount = (resultCount ?? 0) + locators.count
-                completion(.success(LocatorCollection(locators: locators)))
+                completion(.success(_LocatorCollection(locators: locators)))
 
             } catch {
                 completion(.failure(.wrap(error)))

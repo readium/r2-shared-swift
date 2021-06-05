@@ -8,33 +8,40 @@ import Foundation
 import SwiftSoup
 
 /// Extracts pure content from a marked-up (e.g. HTML) or binary (e.g. PDF) resource.
-public protocol ResourceContentExtractor {
+///
+/// **WARNING:** This API is experimental and may change or be removed in a future release without
+/// notice. Use with caution.
+public protocol _ResourceContentExtractor {
 
     /// Extracts the text content of the given `resource`.
     func extractText(of resource: Resource) -> ResourceResult<String>
 }
 
-public extension ResourceContentExtractor {
+public extension _ResourceContentExtractor {
     func extractText(of resource: Resource) -> ResourceResult<String> {
         .success("")
     }
 }
 
-public protocol ResourceContentExtractorFactory {
+/// **WARNING:** This API is experimental and may change or be removed in a future release without
+/// notice. Use with caution.
+public protocol _ResourceContentExtractorFactory {
 
     /// Creates a `ResourceContentExtractor` instance for the given `resource`.
     /// Returns null if the resource format is not supported.
-    func makeExtractor(for resource: Resource) -> ResourceContentExtractor?
+    func makeExtractor(for resource: Resource) -> _ResourceContentExtractor?
 }
 
-public class DefaultResourceContentExtractorFactory: ResourceContentExtractorFactory {
+/// **WARNING:** This API is experimental and may change or be removed in a future release without
+/// notice. Use with caution.
+public class _DefaultResourceContentExtractorFactory: _ResourceContentExtractorFactory {
 
     public init() {}
 
-    public func makeExtractor(for resource: Resource) -> ResourceContentExtractor? {
+    public func makeExtractor(for resource: Resource) -> _ResourceContentExtractor? {
         switch resource.link.mediaType {
         case .html, .xhtml:
-            return HTMLResourceContentExtractor()
+            return _HTMLResourceContentExtractor()
         default:
             return nil
         }
@@ -42,7 +49,10 @@ public class DefaultResourceContentExtractorFactory: ResourceContentExtractorFac
 }
 
 /// `ResourceContentExtractor` implementation for HTML resources.
-class HTMLResourceContentExtractor: ResourceContentExtractor {
+///
+/// **WARNING:** This API is experimental and may change or be removed in a future release without
+/// notice. Use with caution.
+class _HTMLResourceContentExtractor: _ResourceContentExtractor {
 
     func extractText(of resource: Resource) -> ResourceResult<String> {
         resource.readAsString()
