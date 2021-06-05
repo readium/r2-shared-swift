@@ -11,6 +11,21 @@ All notable changes to this project will be documented in this file.
 * (*alpha*) A new Publication `SearchService` to search through the resources' content with a default implementation `StringSearchService`.
 
 
+## [2.0.1]
+
+### Fixed
+
+* [#139](https://github.com/readium/r2-shared-swift/pull/139) Compile error with Xcode 12.4
+
+
+## [2.0.0]
+
+### Deprecated
+
+* All APIs deprecated in previous versions are now unavailable.
+* `DownloadSession` is deprecated and will be removed in the next major version. Please migrate to your own download solution.
+
+
 ## [2.0.0-beta.2]
 
 ### Added
@@ -103,3 +118,5 @@ All notable changes to this project will be documented in this file.
 [2.0.0-alpha.2]: https://github.com/readium/r2-shared-swift/compare/2.0.0-alpha.1...2.0.0-alpha.2
 [2.0.0-beta.1]: https://github.com/readium/r2-shared-swift/compare/2.0.0-alpha.2...2.0.0-beta.1
 [2.0.0-beta.2]: https://github.com/readium/r2-shared-swift/compare/2.0.0-beta.1...2.0.0-beta.2
+[2.0.0]: https://github.com/readium/r2-shared-swift/compare/2.0.0-beta.2...2.0.0
+[2.0.1]: https://github.com/readium/r2-shared-swift/compare/2.0.0...2.0.1
