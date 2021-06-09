@@ -1,6 +1,10 @@
 name: R2Shared
 
-on: [push]
+on:
+  push:
+    branches: [ develop ]
+  pull_request:
+    branches: [ develop ]
 
 jobs:
   build:
