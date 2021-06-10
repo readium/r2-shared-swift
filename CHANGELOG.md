@@ -2,12 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
-**Warning:** Features marked as *experimental* may change or be removed in a future release without notice. Use with caution.
+**Warning:** Features marked as *alpha* may change or be removed in a future release without notice. Use with caution.
 
 ## [Unreleased]
 
 ### Added
 
+* Support for Swift Package Manager (contributed by [@stevenzeck](https://github.com/readium/r2-shared-swift/pull/145)).
+* (*alpha*) A new Publication `SearchService` to search through the resources' content with a default implementation `StringSearchService`.
 * `Link` objects from archive-based publication assets (e.g. an EPUB/ZIP) have additional properties for entry metadata.
     ```json
     "properties" {
@@ -17,6 +19,7 @@ All notable changes to this project will be documented in this file.
         }
     }
     ```
+
 
 ## [2.0.1]
 
@@ -110,7 +113,7 @@ All notable changes to this project will be documented in this file.
 * In `Publication` shared models:
   * [Presentation Hints](https://readium.org/webpub-manifest/extensions/presentation.html) and [HTML Locations](https://readium.org/architecture/models/locators/extensions/html.md) extensions.
   * Support for OPDS holds, copies and availability in `Link`, for library-specific features.
-* (*Experimental*) Audiobook toolkit:
+* (*alpha*) Audiobook toolkit:
   * [`AudioSession`](https://github.com/readium/r2-shared-swift/pull/91) simplifies the setup of an `AVAudioSession` and handling its interruptions.
   * [`NowPlayingInfo`](https://github.com/readium/r2-shared-swift/pull/91) helps manage the ["Now Playing"](https://developer.apple.com/documentation/mediaplayer/becoming_a_now_playable_app) information displayed on the lock screen.
 
