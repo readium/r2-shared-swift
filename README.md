@@ -8,19 +8,25 @@ Contains the definitions of the custom types (model) used across the Readium 2 S
 
 ## Adding the library to your iOS project
 
-> _Note:_ requires Swift 4.2 (and Xcode 10.1).
+> _Note:_ requires Swift 4.2 (and Xcode 12.4).
 
 ### Carthage
 
 [Carthage][] is a simple, decentralized dependency manager for Cocoa. To
 install R2Shared with Carthage:
 
- 1. Make sure Carthage is [installed][Carthage Installation].
+ 1. Make sure Carthage 0.38 or newer is [installed][Carthage Installation].
 
  2. Update your Cartfile to include the following:
 
     ```ruby
     github "readium/r2-shared-swift" "develop"
+    ```
+
+    or for a specific version:
+
+    ```ruby
+    github "readium/r2-shared-swift" == 2.0.1
     ```
 
  3. Run:

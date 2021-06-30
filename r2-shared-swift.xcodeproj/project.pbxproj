@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 46;
+	objectVersion = 52;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -39,6 +39,9 @@
 		3ED94EF481DA31B8206354C7 /* Publication+OPDS.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ED944DB0E9AFBCA14CC5A67 /* Publication+OPDS.swift */; };
 		3ED94F56B050CCF55F90524E /* MediaTypeSnifferTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ED9404DDFEB701146894979 /* MediaTypeSnifferTests.swift */; };
 		57470F7E20ED0D1A000CDCA3 /* DownloadSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57470F7D20ED0D1A000CDCA3 /* DownloadSession.swift */; };
+		737F1134268BEB4C00AA3852 /* SwiftSoup.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 737F1131268BEB4C00AA3852 /* SwiftSoup.xcframework */; };
+		737F1135268BEB4C00AA3852 /* Fuzi.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 737F1132268BEB4C00AA3852 /* Fuzi.xcframework */; };
+		737F1136268BEB4C00AA3852 /* Minizip.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 737F1133268BEB4C00AA3852 /* Minizip.xcframework */; };
 		CA038E2F2520D3F700489729 /* PDFKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA038E2E2520D3F700489729 /* PDFKit.swift */; };
 		CA038E5025222B0900489729 /* ControlFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA038E4F25222B0900489729 /* ControlFlow.swift */; };
 		CA0D3C0F2518E213005B47BC /* PDFDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0D3C0E2518E213005B47BC /* PDFDocument.swift */; };
@@ -125,8 +128,6 @@
 		CA7116F12455FAF900C029FD /* UTI.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA7116F02455FAF900C029FD /* UTI.swift */; };
 		CA7B1AA5248A2CFF00152F73 /* URITemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA7B1AA4248A2CFF00152F73 /* URITemplate.swift */; };
 		CA7B1AA7248A2D1200152F73 /* URITemplateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA7B1AA6248A2D1200152F73 /* URITemplateTests.swift */; };
-		CA7B7798263AB83F00260838 /* Fuzi.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CA7B7797263AB83F00260838 /* Fuzi.framework */; };
-		CA7B779C263AB84300260838 /* Minizip.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CA7B779B263AB84300260838 /* Minizip.framework */; };
 		CA81741C24585E6700033776 /* NowPlayingInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA81741B24585E6700033776 /* NowPlayingInfo.swift */; };
 		CA86728E24485BE70035FDF4 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CA86728D24485BE70035FDF4 /* CoreServices.framework */; };
 		CA8C84142468906600CE97A4 /* Fetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA8C84132468906600CE97A4 /* Fetcher.swift */; };
@@ -190,7 +191,6 @@
 		CAE4DCB224BB669D00611638 /* GeneratedCoverServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAE4DCB124BB669D00611638 /* GeneratedCoverServiceTests.swift */; };
 		CAE4DCB424BB6D9E00611638 /* CoverServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAE4DCB324BB6D9E00611638 /* CoverServiceTests.swift */; };
 		CAE4DCB624BB71FF00611638 /* Optional.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAE4DCB524BB71FF00611638 /* Optional.swift */; };
-		CAF21471264ABB9300056F52 /* SwiftSoup.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CAF21470264ABB9300056F52 /* SwiftSoup.framework */; };
 		CAF4EAE42237ABC700A17DA1 /* MediaOverlayNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3E7D4041F4EC69100DF166D /* MediaOverlayNode.swift */; };
 		CAF4EAE52237ABC700A17DA1 /* MediaOverlays.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3E7D4051F4EC69100DF166D /* MediaOverlays.swift */; };
 		CAF4EAE72237AD6000A17DA1 /* UserProperties.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEF39DF220E3895200A560F3 /* UserProperties.swift */; };
@@ -232,8 +232,8 @@
 		3ED942B2BBE9224BBDB9CDEE /* Collection.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Collection.swift; sourceTree = "<group>"; };
 		3ED94338BE7DC5CB4239B425 /* HTTPRequest.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HTTPRequest.swift; sourceTree = "<group>"; };
 		3ED943C9821500DFBB7F13EE /* MediaType.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MediaType.swift; sourceTree = "<group>"; };
-		3ED943FF2F66415AD55D5A36 /* Properties+EPUB.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "Properties+EPUB.swift"; sourceTree = "<group>"; };
 		3ED943F5D7D8DF012DFB19DD /* ResourceContentExtractor.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ResourceContentExtractor.swift; sourceTree = "<group>"; };
+		3ED943FF2F66415AD55D5A36 /* Properties+EPUB.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "Properties+EPUB.swift"; sourceTree = "<group>"; };
 		3ED9440B6F078846EA92DB02 /* MediaTypeSnifferContext.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MediaTypeSnifferContext.swift; sourceTree = "<group>"; };
 		3ED944DB0E9AFBCA14CC5A67 /* Publication+OPDS.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "Publication+OPDS.swift"; sourceTree = "<group>"; };
 		3ED944F337D9B6CFC6CD33EA /* MediaTypeTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MediaTypeTests.swift; sourceTree = "<group>"; };
@@ -257,6 +257,9 @@
 		3ED94F8FDB49AD8DCF4F50C7 /* Metadata+Presentation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "Metadata+Presentation.swift"; sourceTree = "<group>"; };
 		3ED94FCBD1C8D8FE8EFB23FC /* Presentation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Presentation.swift; sourceTree = "<group>"; };
 		57470F7D20ED0D1A000CDCA3 /* DownloadSession.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DownloadSession.swift; sourceTree = "<group>"; };
+		737F1131268BEB4C00AA3852 /* SwiftSoup.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = SwiftSoup.xcframework; path = Carthage/Build/SwiftSoup.xcframework; sourceTree = "<group>"; };
+		737F1132268BEB4C00AA3852 /* Fuzi.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = Fuzi.xcframework; path = Carthage/Build/Fuzi.xcframework; sourceTree = "<group>"; };
+		737F1133268BEB4C00AA3852 /* Minizip.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = Minizip.xcframework; path = Carthage/Build/Minizip.xcframework; sourceTree = "<group>"; };
 		AEF39DF220E3895200A560F3 /* UserProperties.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProperties.swift; sourceTree = "<group>"; };
 		CA038E2E2520D3F700489729 /* PDFKit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFKit.swift; sourceTree = "<group>"; };
 		CA038E4F25222B0900489729 /* ControlFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlFlow.swift; sourceTree = "<group>"; };
@@ -344,8 +347,6 @@
 		CA7116F02455FAF900C029FD /* UTI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UTI.swift; sourceTree = "<group>"; };
 		CA7B1AA4248A2CFF00152F73 /* URITemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URITemplate.swift; sourceTree = "<group>"; };
 		CA7B1AA6248A2D1200152F73 /* URITemplateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URITemplateTests.swift; sourceTree = "<group>"; };
-		CA7B7797263AB83F00260838 /* Fuzi.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = Fuzi.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		CA7B779B263AB84300260838 /* Minizip.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = Minizip.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		CA81741B24585E6700033776 /* NowPlayingInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NowPlayingInfo.swift; sourceTree = "<group>"; };
 		CA86728D24485BE70035FDF4 /* CoreServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreServices.framework; path = System/Library/Frameworks/CoreServices.framework; sourceTree = SDKROOT; };
 		CA8C84132468906600CE97A4 /* Fetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Fetcher.swift; sourceTree = "<group>"; };
@@ -407,7 +408,6 @@
 		CAE4DCB124BB669D00611638 /* GeneratedCoverServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneratedCoverServiceTests.swift; sourceTree = "<group>"; };
 		CAE4DCB324BB6D9E00611638 /* CoverServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverServiceTests.swift; sourceTree = "<group>"; };
 		CAE4DCB524BB71FF00611638 /* Optional.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Optional.swift; sourceTree = "<group>"; };
-		CAF21470264ABB9300056F52 /* SwiftSoup.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = SwiftSoup.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		CAF6487A266E9A880067D2C3 /* Bundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bundle.swift; sourceTree = "<group>"; };
 		F3B1879F1FA33D4D00BB46BF /* Feed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Feed.swift; sourceTree = "<group>"; };
 		F3B187A11FA33DFA00BB46BF /* Facet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Facet.swift; sourceTree = "<group>"; };
@@ -434,10 +434,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CA7B7798263AB83F00260838 /* Fuzi.framework in Frameworks */,
 				CA86728E24485BE70035FDF4 /* CoreServices.framework in Frameworks */,
-				CA7B779C263AB84300260838 /* Minizip.framework in Frameworks */,
-				CAF21471264ABB9300056F52 /* SwiftSoup.framework in Frameworks */,
+				737F1134268BEB4C00AA3852 /* SwiftSoup.xcframework in Frameworks */,
+				737F1136268BEB4C00AA3852 /* Minizip.xcframework in Frameworks */,
+				737F1135268BEB4C00AA3852 /* Fuzi.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1102,9 +1102,9 @@
 		F3E7D41F1F4ECA9800DF166D /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				CAF21470264ABB9300056F52 /* SwiftSoup.framework */,
-				CA7B779B263AB84300260838 /* Minizip.framework */,
-				CA7B7797263AB83F00260838 /* Fuzi.framework */,
+				737F1132268BEB4C00AA3852 /* Fuzi.xcframework */,
+				737F1133268BEB4C00AA3852 /* Minizip.xcframework */,
+				737F1131268BEB4C00AA3852 /* SwiftSoup.xcframework */,
 				CA86728D24485BE70035FDF4 /* CoreServices.framework */,
 			);
 			name = Frameworks;
@@ -1457,7 +1457,11 @@
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				INFOPLIST_FILE = "r2-shared-swiftTests/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 11.4;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = "org.readium.r2-shared-swiftTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -1480,7 +1484,11 @@
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				INFOPLIST_FILE = "r2-shared-swiftTests/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 11.4;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = "org.readium.r2-shared-swiftTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -1600,7 +1608,8 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
-				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALIDATE_PRODUCT = YES;
@@ -1630,7 +1639,10 @@
 				INFOPLIST_FILE = "r2-shared-swift/Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
 				OTHER_LDFLAGS = "-lxml2";
 				PRODUCT_BUNDLE_IDENTIFIER = "org.readium.r2-shared-swift";
 				PRODUCT_NAME = R2Shared;
@@ -1664,7 +1676,10 @@
 				INFOPLIST_FILE = "r2-shared-swift/Info.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
 				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
 				OTHER_LDFLAGS = "-lxml2";
 				PRODUCT_BUNDLE_IDENTIFIER = "org.readium.r2-shared-swift";
 				PRODUCT_NAME = R2Shared;
