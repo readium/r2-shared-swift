@@ -957,6 +957,7 @@
 				);
 				LIBRARY_SEARCH_PATHS = "$(PROJECT_DIR)/Carthage";
 				PRODUCT_BUNDLE_IDENTIFIER = "org.readium.r2-shared-swift";
+				PRODUCT_NAME = R2Shared;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1103,6 +1104,7 @@
 				);
 				LIBRARY_SEARCH_PATHS = "$(PROJECT_DIR)/Carthage";
 				PRODUCT_BUNDLE_IDENTIFIER = "org.readium.r2-shared-swift";
+				PRODUCT_NAME = R2Shared;
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
