@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 51;
+	objectVersion = 52;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -754,9 +754,7 @@
 		D7E298A3A05DA9560C100987 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1200;
-				TargetAttributes = {
-				};
+				LastUpgradeCheck = 1240;
 			};
 			buildConfigurationList = 171AE7D7097BD9B38FAA1EA5 /* Build configuration list for PBXProject "r2-shared-swift" */;
 			compatibilityVersion = "Xcode 10.0";
